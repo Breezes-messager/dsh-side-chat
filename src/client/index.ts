@@ -32,8 +32,24 @@ export const name = 'dsh-side-chat'
 export const inject = ['slots', 'locale', 'sidebarRightTabs', 'sidebarRight']
 
 /**
+ * Open the side-chat tab, reporting a wiring failure instead of swallowing it.
+ *
+ * `openTab` throws when the column has no mounted Session surface or nobody
+ * registered the kind; either would otherwise look like a dead button.
+ * @param ctx - client context carrying the navigation controller.
+ * @param params - what the panel is being opened on.
+ */
+function openPanel(ctx: Context, params?: Record<string, unknown>): void {
+  try {
+    ctx.sidebarRight.openTab(SIDE_CHAT_KIND, params === undefined ? undefined : { params })
+  } catch (error: unknown) {
+    console.warn('dsh-side-chat: could not open the panel', error)
+  }
+}
+
+/**
  * Client plugin body: register the dictionaries, the tab type, its body, and the
- * two ways in.
+ * ways in.
  * @param ctx - client root context carrying the registries and the copy service.
  */
 export function apply(ctx: Context): void {
@@ -64,7 +80,7 @@ export function apply(ctx: Context): void {
     id: HEADER_ACTION_ID,
     order: 20,
     locale: SIDE_CHAT_NS,
-    inject: () => ({ open: () => { ctx.sidebarRight.openTab(SIDE_CHAT_KIND) } }),
+    inject: () => ({ open: () => { openPanel(ctx) } }),
   }, SideChatHeaderButton)), 'side-chat: header control')
 
   ctx.effect(() => ctx.slots.inject('conversation.chat.assistant-actions', () => ctx.slots.register({
@@ -74,7 +90,7 @@ export function apply(ctx: Context): void {
     locale: SIDE_CHAT_NS,
     inject: () => ({
       askAbout: (messageId: string) => {
-        ctx.sidebarRight.openTab(SIDE_CHAT_KIND, { params: { messageId } })
+        openPanel(ctx, { messageId })
       },
     }),
   }, AskInSideChatAction)), 'side-chat: message action')
@@ -88,7 +104,7 @@ export function apply(ctx: Context): void {
     locale: SIDE_CHAT_NS,
     inject: () => ({
       openWithSelection: (selection: string) => {
-        ctx.sidebarRight.openTab(SIDE_CHAT_KIND, { params: { selection } })
+        openPanel(ctx, { selection })
       },
     }),
   }, SideChatSelectionAction)), 'side-chat: selection action')
