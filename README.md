@@ -2,16 +2,36 @@
 
 English | [中文](README.zh.md)
 
-A **side chat** for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): a
-temporary conversation that lives in the right Sidebar beside the one you are already
-having. Ask it about the conversation, about a single message, or about anything else —
-and close the app, and it is gone.
+A DeepSeek Harness implementation of **Codex's side chat** (侧边聊天): a temporary
+conversation that lives in the right Sidebar beside the one you are already having. Ask it
+about the conversation, about a single message, or about text you selected — and close the
+app, and it is gone.
 
 ```
         ⊕
     侧边聊天
 侧边聊天是临时聊天，关闭应用后会消失。
 ```
+
+## Where this comes from
+
+The feature is OpenAI Codex's: a side chat opened from a message, deliberately temporary,
+gone when the app closes. This repository re-implements that interaction on
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — the vocabulary and the
+contract are Codex's, the code is not: there is no ported source here, every piece is built
+on the Harness's own public extension points, and the differences below are where the two
+hosts genuinely differ.
+
+| Codex's side chat | Here |
+| --- | --- |
+| A temporary chat that disappears when the app closes | Same contract, kept structurally: the transcript lives in page memory, the Host is stateless, and nothing is written to a Session log, the projection cache or disk |
+| "Ask in side chat" on a message | Kept for finished assistant messages; the Harness has no message action seat for user messages, so selecting text there raises a floating action instead |
+| The chat sits beside the conversation | A right-Sidebar tab type, so it docks, floats, splits and closes like every other tab in that column |
+| Context comes from the conversation you are in | The Host folds the Session log through `ctx.sessionQuery` and adds whatever the panel was opened on |
+| — | An answer renders as Markdown, and the conversation runs on the same model route as the Session it belongs to |
+
+What does **not** carry over is Codex's tool-using side agent: that needs a temporary
+*Session*, which DeepSeek Harness does not have (see [Known limitations](#known-limitations)).
 
 ## What it does
 
