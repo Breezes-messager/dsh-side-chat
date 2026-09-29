@@ -34,6 +34,9 @@ and close the app, and it is gone.
 - **Genuinely temporary.** Nothing is written to a Session log, to the projection cache,
   or to disk. The transcript lives in a page-memory store keyed by Session; the Host is
   stateless. Reload the window and it is empty; close the app and it never existed.
+- **Answers render as Markdown.** Bold, italic, headings, lists, fenced code, quotes,
+  rules and `http(s)`/`mailto` links become React elements — model output never becomes
+  markup, because this plugin has no `innerHTML` path at all.
 
 ## Install
 
