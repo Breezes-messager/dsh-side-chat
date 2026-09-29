@@ -23,10 +23,34 @@ describe('markdown rendering', () => {
     expect(html).toContain('<strong>相对性</strong>')
   })
 
-  it('renders a fenced block as preformatted text', () => {
+  it('renders a fenced block as highlighted preformatted text', () => {
     const html = render('```ts\nconst a = 1\n```')
     expect(html).toContain('<pre')
-    expect(html).toContain('const a = 1')
+    expect(html).toContain('hljs-keyword')
+    // Highlighting adds spans, so compare the text the reader actually sees.
+    expect(html.replace(/<[^>]+>/g, '')).toBe('const a = 1')
+  })
+
+  it('renders an unknown language as plain preformatted text', () => {
+    const html = render('```brainfuck\n+++\n```')
+    expect(html).toContain('<pre')
+    expect(html).not.toContain('hljs-')
+    expect(html).toContain('+++')
+  })
+
+  it('renders a table with a header row and cells', () => {
+    const html = render('| 名字 | 值 |\n| :-- | --: |\n| a | 1 |')
+    expect(html).toContain('<table')
+    expect(html).toContain('<th')
+    expect(html).toContain('text-align:left')
+    expect(html).toContain('text-align:right')
+    expect(html).toContain('<td')
+  })
+
+  it('renders a nested list inside its parent item', () => {
+    const html = render('- outer\n  - inner')
+    expect((html.match(/<ul/g) ?? []).length).toBe(2)
+    expect((html.match(/<li/g) ?? []).length).toBe(2)
   })
 
   it('renders a safe link and drops an unsafe one', () => {

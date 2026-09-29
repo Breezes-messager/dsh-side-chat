@@ -74,5 +74,8 @@
     "tsdown": "^0.22.2",
     "typescript": "^5.9.0",
     "vitest": "^4.1.8"
+  },
+  "dependencies": {
+    "highlight.js": "^11.12.0"
   }
 }

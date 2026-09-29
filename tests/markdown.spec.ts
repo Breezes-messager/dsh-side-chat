@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseInline, parseMarkdown } from '../src/client/markdown.ts'
+import { parseInline, parseMarkdown, splitTableRow } from '../src/client/markdown.ts'
 
 describe('inline parsing', () => {
   it('reads bold, italic and code', () => {
@@ -66,15 +66,84 @@ describe('block parsing', () => {
 
   it('reads bullet and ordered lists', () => {
     expect(parseMarkdown('- a\n- b\n\n1. x\n2. y')).toEqual([
-      { kind: 'list', ordered: false, start: 1, items: ['a', 'b'] },
-      { kind: 'list', ordered: true, start: 1, items: ['x', 'y'] },
+      { kind: 'list', ordered: false, start: 1, items: [
+        { lines: ['a'], children: [] },
+        { lines: ['b'], children: [] },
+      ] },
+      { kind: 'list', ordered: true, start: 1, items: [
+        { lines: ['x'], children: [] },
+        { lines: ['y'], children: [] },
+      ] },
     ])
   })
 
   it('keeps an ordered list start number', () => {
     expect(parseMarkdown('3. three\n4. four')).toEqual([
-      { kind: 'list', ordered: true, start: 3, items: ['three', 'four'] },
+      { kind: 'list', ordered: true, start: 3, items: [
+        { lines: ['three'], children: [] },
+        { lines: ['four'], children: [] },
+      ] },
     ])
+  })
+
+  it('nests an indented list inside its item', () => {
+    const [list] = parseMarkdown('- outer\n  - inner\n  - inner two\n- second')
+    expect(list?.kind).toBe('list')
+    const items = list?.kind === 'list' ? list.items : []
+    expect(items).toHaveLength(2)
+    expect(items[0]?.children).toHaveLength(1)
+    expect(items[0]?.children[0]).toMatchObject({
+      kind: 'list',
+      ordered: false,
+      items: [{ lines: ['inner'], children: [] }, { lines: ['inner two'], children: [] }],
+    })
+  })
+
+  it('nests an ordered list inside a bullet', () => {
+    const [list] = parseMarkdown('- steps\n  1. first\n  2. second')
+    const nested = list?.kind === 'list' ? list.items[0]?.children[0] : undefined
+    expect(nested).toMatchObject({ kind: 'list', ordered: true, start: 1 })
+  })
+
+  it('keeps a list together across a blank line', () => {
+    const blocks = parseMarkdown('- a\n\n- b')
+    expect(blocks).toHaveLength(1)
+    expect(blocks[0]?.kind === 'list' ? blocks[0].items.length : 0).toBe(2)
+  })
+
+  it('keeps a continuation line in its item', () => {
+    const [list] = parseMarkdown('- first line\n  second line\n- other')
+    const first = list?.kind === 'list' ? list.items[0] : undefined
+    expect(first?.lines).toEqual(['first line', 'second line'])
+  })
+
+  it('reads a table with its alignment', () => {
+    const [table] = parseMarkdown('| a | b | c |\n| :-- | :-: | --: |\n| 1 | 2 | 3 |')
+    expect(table).toEqual({
+      kind: 'table',
+      align: ['left', 'center', 'right'],
+      header: ['a', 'b', 'c'],
+      rows: [['1', '2', '3']],
+    })
+  })
+
+  it('reads a table with no outer pipes and no alignment', () => {
+    const [table] = parseMarkdown('a | b\n--- | ---\n1 | 2')
+    expect(table).toEqual({
+      kind: 'table',
+      align: [undefined, undefined],
+      header: ['a', 'b'],
+      rows: [['1', '2']],
+    })
+  })
+
+  it('keeps an escaped pipe inside one cell', () => {
+    expect(splitTableRow('| a \\| b | c |')).toEqual(['a | b', 'c'])
+  })
+
+  it('leaves pipe-bearing prose as a paragraph', () => {
+    const blocks = parseMarkdown('用 a | b 表示二选一')
+    expect(blocks[0]?.kind).toBe('paragraph')
   })
 
   it('reads a blockquote', () => {

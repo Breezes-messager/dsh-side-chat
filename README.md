@@ -34,9 +34,12 @@ and close the app, and it is gone.
 - **Genuinely temporary.** Nothing is written to a Session log, to the projection cache,
   or to disk. The transcript lives in a page-memory store keyed by Session; the Host is
   stateless. Reload the window and it is empty; close the app and it never existed.
-- **Answers render as Markdown.** Bold, italic, headings, lists, fenced code, quotes,
+- **Answers render as Markdown.** Bold, italic, headings, ordered/unordered lists with
+  nesting, fenced code with syntax highlighting, tables with column alignment, quotes,
   rules and `http(s)`/`mailto` links become React elements — model output never becomes
-  markup, because this plugin has no `innerHTML` path at all.
+  markup, because this plugin has no `innerHTML` path at all. Highlighting uses
+  highlight.js for lexing, then parses its spans back into the same element tree rather
+  than injecting them.
 
 ## Install
 
@@ -81,6 +84,9 @@ Manual equivalent:
 | Selection action | `src/client/selection-action.tsx` | The floating trigger over a selection in the original conversation |
 | Temporary store | `src/client/store.ts` | Page-memory transcript, keyed by Session |
 | Transport | `src/client/transport.ts` | `fetch` + SSE decode; `EventSource` cannot carry a body |
+| Markdown | `src/client/markdown.ts` | Parser only: blocks and inline runs, no DOM |
+| Renderer | `src/client/Markdown.tsx` | Parsed data → React elements; no `innerHTML` anywhere |
+| Highlighting | `src/client/highlight.ts` | highlight.js lexing, its spans rebuilt into the same element tree |
 
 The Host route is guarded by `connection.requestRejection`, accepts JSON only, bounds the
 body, and caps concurrent answers. It streams `text` frames and ends with `done`; every
@@ -102,7 +108,12 @@ failure arrives as an `error` frame rather than a broken connection.
   they cannot be targeted.
 - **The panel is per Session.** Context follows the mounted Session; reopening the panel
   for another Session starts an empty temporary chat.
-- Context is capped (20 recent messages, 4 000 characters each, 24 000 characters total)
+- **Highlighting is a curated set.** TypeScript/JavaScript/JSON, Python, Bash, PowerShell,
+  HTML/XML, CSS, Markdown, SQL, YAML, Go, Rust, Java, C++, INI/TOML and diff are bundled;
+  a fence naming anything else renders as plain code. The token palette follows the system
+  light/dark scheme, because the Harness theme tokens describe surfaces and labels rather
+  than a syntax vocabulary.
+- **Context is capped** (20 recent messages, 4 000 characters each, 24 000 characters total)
   and each answer is one model call — no multi-turn tool loop, no memory compaction.
 
 ## Development
@@ -117,6 +128,14 @@ pnpm test
 The browser bundle is a CommonJS closure factory handed to `window.__ModuleLoader__` with
 `react` and `react/jsx-runtime` left external for the shell's module table; everything else
 is inlined. The Host half is a plain ESM Cordis plugin.
+
+Rendering changes are easier to see than to assert, so a preview generator writes the real
+component with the real stylesheet into `preview.html`:
+
+```sh
+DSH_SIDE_CHAT_PREVIEW=1 pnpm test
+chrome --headless=new --screenshot=preview.png --window-size=720,1180 preview.html
+```
 
 ## License
 

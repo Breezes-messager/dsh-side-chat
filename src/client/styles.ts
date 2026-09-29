@@ -1,4 +1,4 @@
-/**
+﻿/**
  * The panel's stylesheet, injected once per page from TypeScript.
  *
  * A standalone plugin ships no build-time CSS pipeline, and the panel is one
@@ -6,6 +6,8 @@
  * theme token with a fallback, so the panel follows light/dark without a second
  * definition, and every selector is namespaced under `sc-` to avoid reaching
  * into another plugin's surface.
+ *
+ * Exported so a rendering test can preview the real sheet instead of a copy.
  */
 
 /** Class names the panel draws with. */
@@ -43,12 +45,15 @@ export const CLASS = {
   mdQuote: 'sc-md-quote',
   mdLink: 'sc-md-link',
   mdRule: 'sc-md-rule',
+  mdTableWrap: 'sc-md-table-wrap',
+  mdTable: 'sc-md-table',
 } as const
 
 /** The style tag's identity, so a re-injection is a no-op and HMR can replace it. */
 const TAG_ID = 'dsh-side-chat/panel.css'
 
-const CSS = `
+/** The stylesheet text; exported for rendering previews and tests. */
+export const PANEL_CSS = `
 .sc-root {
   display: flex;
   flex-direction: column;
@@ -284,6 +289,51 @@ const CSS = `
   opacity: 0.75;
 }
 .sc-message-action:hover { opacity: 1; background: var(--dsw-alias-bg-layer-2, rgba(127, 127, 127, 0.14)); }
+.sc-md-table-wrap { margin: 0 0 10px; overflow-x: auto; }
+.sc-md-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.sc-md-table th,
+.sc-md-table td {
+  padding: 5px 8px;
+  border: 0.5px solid var(--dsw-alias-border-l1, rgba(127, 127, 127, 0.3));
+  vertical-align: top;
+}
+.sc-md-table th {
+  background: var(--dsw-alias-bg-layer-2, rgba(127, 127, 127, 0.12));
+  font-weight: 600;
+  text-align: left;
+}
+/* Highlight tokens: one palette per colour scheme. The panel's own colours come
+   from theme tokens, but a syntax palette has no token vocabulary to draw on, so
+   it follows the system scheme the same way an editor would. */
+.sc-md-pre .hljs-comment, .sc-md-pre .hljs-quote { color: #6a737d; font-style: italic; }
+.sc-md-pre .hljs-keyword, .sc-md-pre .hljs-selector-tag, .sc-md-pre .hljs-literal, .sc-md-pre .hljs-doctag { color: #cf222e; }
+.sc-md-pre .hljs-string, .sc-md-pre .hljs-regexp { color: #0a3069; }
+.sc-md-pre .hljs-number, .sc-md-pre .hljs-symbol, .sc-md-pre .hljs-bullet { color: #0550ae; }
+.sc-md-pre .hljs-title, .sc-md-pre .hljs-section, .sc-md-pre .hljs-name, .sc-md-pre .hljs-selector-id { color: #8250df; }
+.sc-md-pre .hljs-attr, .sc-md-pre .hljs-attribute, .sc-md-pre .hljs-variable,
+.sc-md-pre .hljs-template-variable, .sc-md-pre .hljs-type, .sc-md-pre .hljs-property { color: #953800; }
+.sc-md-pre .hljs-built_in, .sc-md-pre .hljs-class .hljs-title { color: #0550ae; }
+.sc-md-pre .hljs-meta, .sc-md-pre .hljs-params { color: #57606a; }
+.sc-md-pre .hljs-addition { color: #116329; }
+.sc-md-pre .hljs-deletion { color: #82071e; }
+@media (prefers-color-scheme: dark) {
+  .sc-md-pre .hljs-comment, .sc-md-pre .hljs-quote { color: #8b949e; }
+  .sc-md-pre .hljs-keyword, .sc-md-pre .hljs-selector-tag, .sc-md-pre .hljs-literal, .sc-md-pre .hljs-doctag { color: #ff7b72; }
+  .sc-md-pre .hljs-string, .sc-md-pre .hljs-regexp { color: #a5d6ff; }
+  .sc-md-pre .hljs-number, .sc-md-pre .hljs-symbol, .sc-md-pre .hljs-bullet { color: #79c0ff; }
+  .sc-md-pre .hljs-title, .sc-md-pre .hljs-section, .sc-md-pre .hljs-name, .sc-md-pre .hljs-selector-id { color: #d2a8ff; }
+  .sc-md-pre .hljs-attr, .sc-md-pre .hljs-attribute, .sc-md-pre .hljs-variable,
+  .sc-md-pre .hljs-template-variable, .sc-md-pre .hljs-type, .sc-md-pre .hljs-property { color: #ffa657; }
+  .sc-md-pre .hljs-built_in, .sc-md-pre .hljs-class .hljs-title { color: #79c0ff; }
+  .sc-md-pre .hljs-meta, .sc-md-pre .hljs-params { color: #8b949e; }
+  .sc-md-pre .hljs-addition { color: #7ee787; }
+  .sc-md-pre .hljs-deletion { color: #ffa198; }
+}
 `
 
 /** Inject the stylesheet once per page. */
@@ -293,6 +343,6 @@ export function ensureStyles(): void {
   const tag = document.createElement('style')
   tag.dataset.plugin = 'dsh-side-chat'
   tag.dataset.pluginCss = TAG_ID
-  tag.textContent = CSS
+  tag.textContent = PANEL_CSS
   document.head.appendChild(tag)
 }

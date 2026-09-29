@@ -2,3 +2,5 @@ node_modules/
 lib/
 *.log
 .DS_Store
+preview.html
+preview.png
