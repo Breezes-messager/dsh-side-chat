@@ -33,7 +33,10 @@ export const inject = ['webServer', 'llm']
 interface LlmStreamChunk {
   readonly type: string
   readonly text?: string
-  readonly reason?: { readonly kind?: string, readonly failure?: { readonly message?: string, readonly code?: string } }
+  readonly reason?: {
+    readonly kind?: string
+    readonly failure?: { readonly message?: string, readonly code?: string, readonly status?: number }
+  }
 }
 
 /** The slice of the `llm` service this plugin uses. */
@@ -118,16 +121,25 @@ async function readBody(req: IncomingMessage, limit: number): Promise<string | u
 /**
  * Whether the request arrived over the loopback interface.
  *
- * The side-chat route follows the HMR channel's trust model rather than the
- * `/api` carrier's: the desktop and `dsh web` servers bind to loopback, that
- * channel is already served without the browser cookie, and a JSON-only,
- * CORS-less route cannot be driven cross-origin by a page the user visits
- * (a `application/json` body forces a preflight this route never approves).
- * Non-loopback peers are still rejected by the connection service's verdict.
+ * Loopback is not a trust boundary on a shared machine: any local process can
+ * reach this port, and this route can fold the user's own conversation into a
+ * model answer. So the browser cookie the Harness issues stays the default
+ * requirement, and only an explicit development switch relaxes it.
  */
 function isLoopback(req: IncomingMessage): boolean {
   const address = req.socket.remoteAddress
   return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1'
+}
+
+/**
+ * Whether unauthenticated loopback callers are accepted.
+ *
+ * Development only: set `DSH_SIDE_CHAT_ALLOW_LOOPBACK=1` to exercise the route
+ * with `curl` against a local instance. It is read per request and never
+ * enabled by anything the browser can influence.
+ */
+function allowsLoopback(): boolean {
+  return process.env.DSH_SIDE_CHAT_ALLOW_LOOPBACK === '1'
 }
 
 /** Whether the request carries the JSON essence this route accepts. */
@@ -308,9 +320,15 @@ async function answer(
       if (chunk.type === 'finish') {
         const kind = chunk.reason?.kind
         if (kind === 'error' || kind === 'aborted') {
-          const detail = chunk.reason?.failure?.message ?? chunk.reason?.failure?.code ?? kind
-          ctx.logger?.warn?.(`side-chat: model call failed (${kind}): ${String(detail)}`)
-          frame({ type: 'error', message: String(detail) })
+          const failure = chunk.reason?.failure
+          // The provider's message can echo request text, so only its code and
+          // status reach the Host log; the user sees the message in their own
+          // panel, where it belongs.
+          const where = [failure?.code ?? 'unknown', failure?.status === undefined ? undefined : `HTTP ${failure.status}`]
+            .filter((part): part is string => part !== undefined)
+            .join(', ')
+          ctx.logger?.warn?.(`side-chat: model call failed (${kind}; ${where})`)
+          frame({ type: 'error', message: String(failure?.message ?? failure?.code ?? kind) })
         } else if (!answered) {
           frame({ type: 'notice', text: 'The model returned no text for this question.' })
         }
@@ -338,9 +356,8 @@ export function apply(ctx: Context, config: Config = {}): void {
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const connection = ctx.get('connection') as ConnectionLike | undefined
     const rejection = connection?.requestRejection?.(req)
-    const trusted = typeof rejection !== 'number' || isLoopback(req)
-    if (!trusted) {
-      res.statusCode = rejection as number
+    if (typeof rejection === 'number' && !(allowsLoopback() && isLoopback(req))) {
+      res.statusCode = rejection
       res.end()
       return
     }

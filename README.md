@@ -114,6 +114,25 @@ The Host route is guarded by `connection.requestRejection`, accepts JSON only, b
 body, and caps concurrent answers. It streams `text` frames and ends with `done`; every
 failure arrives as an `error` frame rather than a broken connection.
 
+## Privacy
+
+- **Nothing is written.** No file is opened for writing anywhere in this plugin — no Session
+  log, no projection cache, no temporary file. The transcript lives in the page's memory and
+  dies with the window, so a side chat never appears in session history, exports, or search.
+- **What leaves the machine** is one model request per question, through the Harness's own
+  `llm` service: your question, the temporary history, and the context folded from the current
+  Session (at most the 20 most recent messages, 4 000 characters each and 24 000 in total,
+  plus the text you selected, capped at 8 000 characters). It goes to the same provider your
+  main conversation already uses. The plugin carries no telemetry and makes no outbound
+  request of its own.
+- **Who may call it.** The route requires the Harness's browser-trust cookie; an
+  unauthenticated local process is refused with 401. That matters here, because this route can
+  fold your own conversation into a model answer. `DSH_SIDE_CHAT_ALLOW_LOOPBACK=1` relaxes it
+  for local development only.
+- **What is logged.** A failed Session read logs its id; a failed model call logs the failure
+  code and HTTP status, never the provider's message, which can echo request text. The
+  transcript itself is never logged.
+
 ## Known limitations
 
 - **No tools.** The side chat answers; it cannot run commands or edit files. A tool-using
