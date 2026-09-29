@@ -30,6 +30,10 @@ export const CLASS = {
   ghost: 'sc-ghost',
   headerButton: 'sc-header-button',
   messageAction: 'sc-message-action',
+  contextText: 'sc-context-text',
+  contextClear: 'sc-context-clear',
+  selectionLayer: 'sc-selection-layer',
+  selectionButton: 'sc-selection-button',
 } as const
 
 /** The style tag's identity, so a re-injection is a no-op and HMR can replace it. */
@@ -107,6 +111,50 @@ const CSS = `
   color: var(--dsw-alias-label-secondary, currentColor);
   font-size: 12px;
 }
+.sc-context-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sc-context-clear {
+  flex: none;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  opacity: 0.7;
+}
+.sc-context-clear:hover { opacity: 1; }
+.sc-selection-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+}
+.sc-selection-button {
+  position: fixed;
+  transform: translate(-50%, -100%);
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0.5px solid var(--dsw-alias-border-l1, rgba(127, 127, 127, 0.35));
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-overlay, #fff);
+  color: var(--dsw-alias-label-primary, inherit);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+}
+.sc-selection-button:hover { border-color: var(--dsw-alias-border-l2, currentColor); }
 .sc-footer {
   display: flex;
   align-items: center;

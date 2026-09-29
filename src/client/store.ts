@@ -25,6 +25,8 @@ export interface SideChatState {
   readonly streaming: boolean
   /** The message the panel was opened on, when it was opened from a message. */
   readonly contextMessageId: string | undefined
+  /** Text selected in the original conversation, when the panel was opened on a selection. */
+  readonly selection: string | undefined
   /** Monotonic counter; the store's snapshot identity. */
   readonly revision: number
 }
@@ -35,19 +37,29 @@ export interface SideChatStore {
   getSnapshot(): SideChatState
   /** Remember which message the panel was opened on. */
   setContextMessageId(messageId: string | undefined): void
+  /** Remember the text the panel was opened on, or drop it. */
+  setSelection(selection: string | undefined): void
   /** Append the user's question and a pending answer; returns the answer's id. */
   begin(question: string): string
   /** Append streamed text to a pending answer. */
   append(answerId: string, text: string): void
-  /** Settle a pending answer. */
-  settle(answerId: string, failure?: string): void
+  /** Settle a pending answer that finished normally. */
+  settle(answerId: string): void
+  /** Settle a pending answer that failed, keeping the reason on screen. */
+  fail(answerId: string, message: string): void
   /** Drop every message, keeping the panel where it is. */
   clear(): void
 }
 
 /** Build one independent store. */
 function createStore(): SideChatStore {
-  let state: SideChatState = { messages: [], streaming: false, contextMessageId: undefined, revision: 0 }
+  let state: SideChatState = {
+    messages: [],
+    streaming: false,
+    contextMessageId: undefined,
+    selection: undefined,
+    revision: 0,
+  }
   const listeners = new Set<() => void>()
   let nextId = 0
 
@@ -65,6 +77,10 @@ function createStore(): SideChatStore {
     setContextMessageId(messageId) {
       if (state.contextMessageId === messageId) return
       publish({ ...state, contextMessageId: messageId })
+    },
+    setSelection(selection) {
+      if (state.selection === selection) return
+      publish({ ...state, selection })
     },
     begin(question) {
       nextId += 1
@@ -88,19 +104,25 @@ function createStore(): SideChatStore {
           message.id === answerId ? { ...message, text: message.text + text } : message),
       })
     },
-    settle(answerId, failure) {
+    settle(answerId) {
       publish({
         ...state,
         streaming: false,
-        messages: state.messages.map(message => message.id === answerId
-          ? failure === undefined
-            ? { ...message, pending: false }
-            : { ...message, pending: false, failed: true, text: message.text }
-          : message),
+        messages: state.messages.map(message =>
+          message.id === answerId ? { ...message, pending: false } : message),
+      })
+    },
+    fail(answerId, message) {
+      publish({
+        ...state,
+        streaming: false,
+        messages: state.messages.map(entry => entry.id === answerId
+          ? { ...entry, pending: false, failed: true, text: entry.text.length > 0 ? entry.text : message }
+          : entry),
       })
     },
     clear() {
-      publish({ messages: [], streaming: false, contextMessageId: undefined })
+      publish({ messages: [], streaming: false, contextMessageId: undefined, selection: undefined })
     },
   }
 }

@@ -24,6 +24,9 @@ export async function askSideChat(
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(request),
+    // The Harness admits this route for the loopback peer either way; sending
+    // the cookie keeps the call inside the same trust story as `/api`.
+    credentials: 'same-origin',
     signal,
   })
   if (!response.ok) {

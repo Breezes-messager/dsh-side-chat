@@ -12,10 +12,18 @@
  * The panel itself is {@link file://./panel.tsx}; this module only wires.
  */
 import type { Context } from '@deepseek-ai/cordis'
-import { HEADER_ACTION_ID, MESSAGE_ACTION_ID, SIDE_CHAT_KIND, SIDE_CHAT_NS, SIDE_CHAT_TAB_ID } from '../protocol.ts'
+import {
+  HEADER_ACTION_ID,
+  MESSAGE_ACTION_ID,
+  SELECTION_ACTION_ID,
+  SIDE_CHAT_KIND,
+  SIDE_CHAT_NS,
+  SIDE_CHAT_TAB_ID,
+} from '../protocol.ts'
 import { AskInSideChatAction, SideChatHeaderButton } from './actions.tsx'
 import { en, zh } from './locales.ts'
 import { SideChatBody } from './panel.tsx'
+import { SideChatSelectionAction } from './selection-action.tsx'
 
 /** Cordis plugin name. */
 export const name = 'dsh-side-chat'
@@ -70,4 +78,18 @@ export function apply(ctx: Context): void {
       },
     }),
   }, AskInSideChatAction)), 'side-chat: message action')
+
+  // The frame-wide additive layer: the only seat that can carry a surface of
+  // ours outside every column, which is what a selection action needs.
+  ctx.effect(() => ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay',
+    id: SELECTION_ACTION_ID,
+    order: 20,
+    locale: SIDE_CHAT_NS,
+    inject: () => ({
+      openWithSelection: (selection: string) => {
+        ctx.sidebarRight.openTab(SIDE_CHAT_KIND, { params: { selection } })
+      },
+    }),
+  }, SideChatSelectionAction)), 'side-chat: selection action')
 }

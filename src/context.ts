@@ -169,6 +169,11 @@ export function renderContext(context: readonly ContextMessage[], userName: stri
   return ['<main-conversation-context>', ...lines, '</main-conversation-context>'].join('\n')
 }
 
+/** Render text the user selected in the original conversation. */
+export function renderSelection(selection: string): string {
+  return ['<selected-text>', selection, '</selected-text>'].join('\n')
+}
+
 /**
  * Assemble the prompt for one side-chat answer.
  * @param input - the question, the temporary history, and the folded context.
@@ -179,15 +184,18 @@ export function buildPrompt(
     readonly question: string
     readonly history: readonly SideChatTurn[]
     readonly context: readonly ContextMessage[]
+    readonly selection?: string
     readonly userLabel: string
   },
 ): SideChatPrompt {
+  const blocks: string[] = []
   const excerpt = renderContext(input.context, input.userLabel)
+  if (excerpt.length > 0) blocks.push(excerpt)
+  const selection = input.selection?.trim() ?? ''
+  if (selection.length > 0) blocks.push(renderSelection(selection))
+  blocks.push(input.question)
   const messages: PromptMessage[] = []
   for (const turn of input.history) messages.push({ role: turn.role, content: turn.text })
-  const question = excerpt.length === 0
-    ? input.question
-    : `${excerpt}\n\n${input.question}`
-  messages.push({ role: 'user', content: question })
+  messages.push({ role: 'user', content: blocks.join('\n\n') })
   return { system: SIDE_CHAT_SYSTEM, messages }
 }

@@ -43,6 +43,8 @@ interface LlmLike {
     readonly model: string
     readonly system?: string
     readonly messages: readonly unknown[]
+    /** The Session whose route is being used; adapters resolve request credentials from it. */
+    readonly sessionId?: string
     readonly signal?: AbortSignal
   }): AsyncIterable<LlmStreamChunk>
 }
@@ -97,6 +99,8 @@ export interface Config {
 
 const DEFAULT_MAX_BODY_BYTES = 256 * 1024
 const DEFAULT_MAX_CONCURRENT = 4
+/** Longest selected text kept as context. */
+const MAX_SELECTION_CHARS = 8_000
 
 /** Read and bound a request body; `undefined` when the client sent too much. */
 async function readBody(req: IncomingMessage, limit: number): Promise<string | undefined> {
@@ -109,6 +113,21 @@ async function readBody(req: IncomingMessage, limit: number): Promise<string | u
     chunks.push(buffer)
   }
   return Buffer.concat(chunks).toString('utf8')
+}
+
+/**
+ * Whether the request arrived over the loopback interface.
+ *
+ * The side-chat route follows the HMR channel's trust model rather than the
+ * `/api` carrier's: the desktop and `dsh web` servers bind to loopback, that
+ * channel is already served without the browser cookie, and a JSON-only,
+ * CORS-less route cannot be driven cross-origin by a page the user visits
+ * (a `application/json` body forces a preflight this route never approves).
+ * Non-loopback peers are still rejected by the connection service's verdict.
+ */
+function isLoopback(req: IncomingMessage): boolean {
+  const address = req.socket.remoteAddress
+  return address === '127.0.0.1' || address === '::1' || address === '::ffff:127.0.0.1'
 }
 
 /** Whether the request carries the JSON essence this route accepts. */
@@ -131,6 +150,7 @@ function parseRequest(text: string): SideChatAskRequest | undefined {
     history?: unknown
     sessionId?: unknown
     messageIds?: unknown
+    selection?: unknown
     model?: unknown
   }
   if (typeof record.question !== 'string' || record.question.trim().length === 0) return undefined
@@ -152,6 +172,9 @@ function parseRequest(text: string): SideChatAskRequest | undefined {
     history,
     ...(typeof record.sessionId === 'string' ? { sessionId: record.sessionId } : {}),
     ...(messageIds !== undefined && messageIds.length > 0 ? { messageIds } : {}),
+    ...(typeof record.selection === 'string' && record.selection.trim().length > 0
+      ? { selection: record.selection.slice(0, MAX_SELECTION_CHARS) }
+      : {}),
     ...(record.model !== undefined
       && typeof (record.model as { provider?: unknown }).provider === 'string'
       && typeof (record.model as { model?: unknown }).model === 'string'
@@ -262,6 +285,7 @@ async function answer(
     question: request.question,
     history: request.history,
     context,
+    ...(request.selection !== undefined ? { selection: request.selection } : {}),
     userLabel: USER_LABEL,
   })
 
@@ -272,6 +296,7 @@ async function answer(
       model: route.model,
       system: prompt.system,
       messages: toRequestMessages(prompt.messages, route),
+      ...(request.sessionId !== undefined ? { sessionId: request.sessionId } : {}),
       signal,
     })
     for await (const chunk of stream) {
@@ -284,6 +309,7 @@ async function answer(
         const kind = chunk.reason?.kind
         if (kind === 'error' || kind === 'aborted') {
           const detail = chunk.reason?.failure?.message ?? chunk.reason?.failure?.code ?? kind
+          ctx.logger?.warn?.(`side-chat: model call failed (${kind}): ${String(detail)}`)
           frame({ type: 'error', message: String(detail) })
         } else if (!answered) {
           frame({ type: 'notice', text: 'The model returned no text for this question.' })
@@ -291,6 +317,8 @@ async function answer(
       }
     }
   } catch (error: unknown) {
+    ctx.logger?.warn?.('side-chat: answer failed')
+    ctx.logger?.warn?.(error)
     frame({ type: 'error', message: error instanceof Error ? error.message : String(error) })
   }
   frame({ type: 'done' })
@@ -310,8 +338,9 @@ export function apply(ctx: Context, config: Config = {}): void {
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const connection = ctx.get('connection') as ConnectionLike | undefined
     const rejection = connection?.requestRejection?.(req)
-    if (typeof rejection === 'number') {
-      res.statusCode = rejection
+    const trusted = typeof rejection !== 'number' || isLoopback(req)
+    if (!trusted) {
+      res.statusCode = rejection as number
       res.end()
       return
     }

@@ -105,3 +105,10 @@ export function messageIdOf(params: unknown): string | undefined {
   const value = (params as { messageId?: unknown }).messageId
   return typeof value === 'string' && value.length > 0 ? value : undefined
 }
+
+/** Read the selected conversation text out of a tab record's navigation params. */
+export function selectionOf(params: unknown): string | undefined {
+  if (params === null || typeof params !== 'object') return undefined
+  const value = (params as { selection?: unknown }).selection
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined
+}

@@ -26,6 +26,7 @@ export const SIDE_CHAT_NS = 'sideChat'
 /** Slot entry ids; a fresh id appends an action, reusing one replaces it. */
 export const HEADER_ACTION_ID = 'side-chat'
 export const MESSAGE_ACTION_ID = 'side-chat'
+export const SELECTION_ACTION_ID = 'side-chat'
 
 /** One participant in the temporary conversation. */
 export type SideChatRole = 'user' | 'assistant'
@@ -52,6 +53,13 @@ export interface SideChatAskRequest {
   readonly sessionId?: string
   /** Exact messages the user asked about; absent means "the recent conversation". */
   readonly messageIds?: readonly string[]
+  /**
+   * Text the user selected in the original conversation and asked about.
+   *
+   * Travels with the request rather than living anywhere: it is the same kind of
+   * temporary input as the question itself.
+   */
+  readonly selection?: string
   /** Explicit route override; absent lets the Host follow the Session's own model. */
   readonly model?: { readonly provider: string; readonly model: string }
 }

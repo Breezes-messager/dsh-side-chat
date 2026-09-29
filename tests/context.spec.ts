@@ -120,4 +120,42 @@ describe('prompt assembly', () => {
     const prompt = buildPrompt({ question: 'hello', history: [], context: [], userLabel: 'User' })
     expect(prompt.messages).toEqual([{ role: 'user', content: 'hello' }])
   })
+
+  it('attaches text selected in the original conversation', () => {
+    const prompt = buildPrompt({
+      question: '这句什么意思？',
+      history: [],
+      context: [],
+      selection: '安装 0.2.0-rc.2',
+      userLabel: 'User',
+    })
+    const content = prompt.messages[0]?.content ?? ''
+    expect(content).toContain('<selected-text>')
+    expect(content).toContain('安装 0.2.0-rc.2')
+    expect(content.endsWith('这句什么意思？')).toBe(true)
+  })
+
+  it('keeps the excerpt and the selection apart', () => {
+    const prompt = buildPrompt({
+      question: 'why?',
+      history: [],
+      context: [{ role: 'assistant', text: 'the answer' }],
+      selection: 'picked words',
+      userLabel: 'User',
+    })
+    const content = prompt.messages[0]?.content ?? ''
+    expect(content.indexOf('<main-conversation-context>')).toBeLessThan(content.indexOf('<selected-text>'))
+    expect(content.indexOf('<selected-text>')).toBeLessThan(content.indexOf('why?'))
+  })
+
+  it('ignores a whitespace-only selection', () => {
+    const prompt = buildPrompt({
+      question: 'hello',
+      history: [],
+      context: [],
+      selection: '   ',
+      userLabel: 'User',
+    })
+    expect(prompt.messages).toEqual([{ role: 'user', content: 'hello' }])
+  })
 })
