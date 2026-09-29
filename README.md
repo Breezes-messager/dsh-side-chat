@@ -1,5 +1,7 @@
 # dsh-side-chat
 
+English | [中文](README.zh.md)
+
 A **side chat** for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): a
 temporary conversation that lives in the right Sidebar beside the one you are already
 having. Ask it about the conversation, about a single message, or about anything else —
