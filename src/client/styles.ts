@@ -34,6 +34,15 @@ export const CLASS = {
   contextClear: 'sc-context-clear',
   selectionLayer: 'sc-selection-layer',
   selectionButton: 'sc-selection-button',
+  mdRoot: 'sc-md',
+  mdParagraph: 'sc-md-p',
+  mdHeading: 'sc-md-h',
+  mdCode: 'sc-md-code',
+  mdPre: 'sc-md-pre',
+  mdList: 'sc-md-list',
+  mdQuote: 'sc-md-quote',
+  mdLink: 'sc-md-link',
+  mdRule: 'sc-md-rule',
 } as const
 
 /** The style tag's identity, so a re-injection is a no-op and HMR can replace it. */
@@ -87,7 +96,46 @@ const CSS = `
   word-break: break-word;
   line-height: 1.65;
 }
-.sc-assistant { white-space: pre-wrap; word-break: break-word; line-height: 1.75; }
+.sc-assistant { word-break: break-word; line-height: 1.75; }
+.sc-md > *:first-child { margin-top: 0; }
+.sc-md > *:last-child { margin-bottom: 0; }
+.sc-md-p { margin: 0 0 10px; }
+.sc-md-h { margin: 14px 0 8px; font-size: 14px; font-weight: 600; }
+.sc-md-list { margin: 0 0 10px; padding-left: 20px; }
+.sc-md-list li { margin: 2px 0; }
+.sc-md-code {
+  padding: 1px 4px;
+  border-radius: 5px;
+  background: var(--dsw-alias-bg-layer-2, rgba(127, 127, 127, 0.16));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.sc-md-pre {
+  margin: 0 0 10px;
+  padding: 9px 11px;
+  overflow-x: auto;
+  border: 0.5px solid var(--dsw-alias-border-l1, rgba(127, 127, 127, 0.3));
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, rgba(127, 127, 127, 0.08));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre;
+}
+.sc-md-quote {
+  margin: 0 0 10px;
+  padding: 2px 0 2px 10px;
+  border-left: 2px solid var(--dsw-alias-border-l2, rgba(127, 127, 127, 0.4));
+  color: var(--dsw-alias-label-secondary, currentColor);
+}
+.sc-md-quote p { margin: 0 0 4px; }
+.sc-md-link { color: var(--dsw-alias-brand-primary, inherit); text-decoration: none; }
+.sc-md-link:hover { text-decoration: underline; }
+.sc-md-rule {
+  margin: 12px 0;
+  border: none;
+  border-top: 0.5px solid var(--dsw-alias-border-l1, rgba(127, 127, 127, 0.3));
+}
 .sc-caret {
   display: inline-block;
   width: 7px;

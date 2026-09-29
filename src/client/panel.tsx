@@ -15,6 +15,7 @@ import type { SideChatAskRequest } from '../protocol.ts'
 import { messageIdOf, selectionOf, type TabBodyProps } from './contract.ts'
 import { SideChatGlyph } from './icons.tsx'
 import { fallbackTranslate } from './locales.ts'
+import { Markdown } from './Markdown.tsx'
 import { CLASS, ensureStyles } from './styles.ts'
 import { historyOf, storeFor, type SideChatState } from './store.ts'
 import { askSideChat } from './transport.ts'
@@ -144,7 +145,9 @@ export function SideChatBody(props: TabBodyProps) {
                     ? <div className={CLASS.userBubble}>{message.text}</div>
                     : (
                         <div className={message.failed === true ? `${CLASS.assistant} ${CLASS.error}` : CLASS.assistant}>
-                          {message.failed === true ? `${t('error.prefix')}${message.text}` : message.text}
+                          {message.failed === true
+                            ? `${t('error.prefix')}${message.text}`
+                            : <Markdown text={message.text} />}
                           {message.pending === true ? <span className={CLASS.caret} /> : null}
                         </div>
                       )}
