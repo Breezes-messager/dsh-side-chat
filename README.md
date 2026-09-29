@@ -15,14 +15,20 @@ and close the app, and it is gone.
 
 - **A right-Sidebar panel.** It is a tab type (`side-chat`) registered through the public
   `ctx.sidebarRightTabs` / `sidebar.right.pane.tab` seats, so it docks, floats, splits and
-  closes like every other tab in that column.
-- **Two ways in.** A `侧边聊天` control in the conversation header, and a bubble action on
-  every finished assistant message that opens the panel *on that message*
-  (`在侧边聊天中提问`).
-- **Context, folded on the Host.** Every question carries the Session id. The Host reads
-  that Session's log through `ctx.sessionQuery`, folds the selected message — or the most
-  recent messages when nothing specific was picked — and hands the excerpt to the model
-  as reference material.
+  closes like every other tab in that column. The composer is mounted in every state,
+  including over the empty one.
+- **Three ways in.**
+  1. A `侧边聊天` control in the conversation header.
+  2. A bubble action on every finished assistant message that opens the panel *on that
+     message*.
+  3. Select text in the original conversation and a floating `在侧边聊天中提问` action
+     appears above the selection — the panel opens with that text attached as context.
+     This rides the frame-wide `shell.overlay` seat, because the Harness has no
+     selection-menu seat to contribute into.
+- **Context, folded on the Host.** Every question carries the Session id plus whatever the
+  panel was opened on. The Host reads that Session's log through `ctx.sessionQuery`, folds
+  the selected message — or the most recent messages when nothing specific was picked — and
+  hands the excerpt, together with any selected text, to the model as reference material.
 - **The same model as the conversation you are in.** The route is resolved from the
   Session's own last `request/header`, falling back to the Host's default selection.
 - **Genuinely temporary.** Nothing is written to a Session log, to the projection cache,
@@ -67,8 +73,9 @@ Manual equivalent:
 | Wire contract | `src/protocol.ts` | Route, tab kind, SSE framing — shared by both halves |
 | Host half | `src/index.ts` | `POST /side-chat/ask`: trust check, body limits, model route, `ctx.llm.stream` → SSE |
 | Host context fold | `src/context.ts` | Session log → prompt context; pure, no Harness imports, unit-tested |
-| Browser half | `src/client/index.ts` | The three registrations (tab type, header control, message action) |
-| Panel | `src/client/panel.tsx` | Empty state, transcript, composer, streaming |
+| Browser half | `src/client/index.ts` | The four registrations (tab type, header control, message action, selection action) |
+| Panel | `src/client/panel.tsx` | Empty state, transcript, composer, streaming, context row |
+| Selection action | `src/client/selection-action.tsx` | The floating trigger over a selection in the original conversation |
 | Temporary store | `src/client/store.ts` | Page-memory transcript, keyed by Session |
 | Transport | `src/client/transport.ts` | `fetch` + SSE decode; `EventSource` cannot carry a body |
 
@@ -85,8 +92,9 @@ failure arrives as an `error` frame rather than a broken connection.
   ones that were never written to disk). Shipping that would mean core changes in the
   Harness, not a plugin.
 - **No message context menu.** The Harness has no message-level context-menu seat, so the
-  "ask in side chat" entry is a button in the finished assistant message's action row —
-  the same seat the Like/Dislike controls use. User messages have no action seat at all.
+  per-message entry is a button in the finished assistant message's action row — the same
+  seat the Like/Dislike controls use — and a selection in the conversation gets the floating
+  action instead. User messages have no action seat at all.
 - **Assistant messages only.** Partial and interrupted messages carry no durable id, so
   they cannot be targeted.
 - **The panel is per Session.** Context follows the mounted Session; reopening the panel
