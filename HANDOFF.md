@@ -97,6 +97,19 @@
 - **`packageManager` 字段在 pack 后会被 npm/pnpm 剔除**（信息项，不影响运行）。
 - **CI 已覆盖** Node 22/24：`install --frozen-lockfile → typecheck → test → build → pack + check-pack → dist/ 与源码一致 → 空 DSH_HOME 上 verify 必须 exit 1`。
 
+### 怎么读 CI 状态（别被"Re-run"骗）
+
+**GitHub 的 "Re-run all jobs" 只会重跑那一次运行的原始提交。** 修复推送之后再点 Re-run，跑的还是旧代码——永远红，看起来像"改了没用"。这一天里我们就踩过：`2810942` 的运行在修复推送后被 Re-run，页面依旧全红，而同一时刻仓库徽章已经是 `CI - passing`。
+
+判断当前状态最可靠的两个办法：
+
+1. **看徽章**（README 顶部那个）。它跟着默认分支的最新运行走：
+   `https://github.com/Breezes-messager/dsh-side-chat/actions/workflows/ci.yml/badge.svg?branch=main`
+2. **在最新一次运行上重新触发**，而不是在旧运行上点 Re-run：
+   - 推任意一个提交（哪怕 `git commit --allow-empty`）；
+   - 或在 Actions 页面点 **Run workflow**（工作流里已配 `workflow_dispatch`）；
+   - 或 `gh workflow run ci.yml --repo Breezes-messager/dsh-side-chat`。
+
 ### 踩坑记录：CI 门禁的跨平台假设必须显式验证
 
 第一次 CI 红，是我自己加的门禁写错了，而且**我在本地"验证"过它通过**——那次验证什么也没证明，因为我的复现和打包发生在同一台 Windows 上。
