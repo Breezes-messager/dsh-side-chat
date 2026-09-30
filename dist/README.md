@@ -21,8 +21,8 @@ of `pnpm pack` from the commit that carries it; nothing is hand-edited.
 | --- | --- |
 | File | `dsh-side-chat-plugin-0.2.0.tgz` |
 | Version | `0.2.0` |
-| Size | 249,798 bytes |
-| SHA-256 | `E54A1CE659E14866A18ED4506CCBD7D7F6DAD4E07B121E25D32C5245441A1C53` |
+| Size | 249,882 bytes |
+| SHA-256 | `53183D35B8D86FA38748E79C55BA081D6E8E715F102059A40DADE4E28FEA964C` |
 | Loader row | `id: dsh-side-chat-plugin` / `name: dsh-side-chat-plugin` |
 | Contents | 15 files — `lib/index.js`, `lib/client.js` (+ source map), both `.d.ts`, `cordis.patch.yml`, `locale/{en,zh}.json`, `icon.svg`, `scripts/verify.mjs`, plus the READMEs, LICENSE and `package.json` |
 | Runtime dependencies | none — everything the Host half needs is inlined, and the browser half uses the shell's React |

@@ -2,6 +2,8 @@
 
 [English](README.md) | 中文
 
+[![CI](https://github.com/Breezes-messager/dsh-side-chat/actions/workflows/ci.yml/badge.svg)](https://github.com/Breezes-messager/dsh-side-chat/actions/workflows/ci.yml)
+
 给 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 加一个**临时侧边聊天**：它挂在右侧栏，可以就当前这轮对话、某一条回答、或者你刚选中的一段文字提问。关掉应用，它就没了。
 
 ```

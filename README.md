@@ -2,6 +2,8 @@
 
 English | [中文](README.zh.md)
 
+[![CI](https://github.com/Breezes-messager/dsh-side-chat/actions/workflows/ci.yml/badge.svg)](https://github.com/Breezes-messager/dsh-side-chat/actions/workflows/ci.yml)
+
 A **temporary side chat** for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): a panel in the right Sidebar where you can ask about the conversation you are in, about one particular answer, or about text you just selected. Close the app and it is gone.
 
 ```
