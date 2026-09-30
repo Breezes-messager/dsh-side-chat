@@ -13,8 +13,7 @@
  */
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -24,49 +23,53 @@ const NOTE = join(DIST, 'README.md')
 const REPO_URL = 'https://github.com/Breezes-messager/dsh-side-chat'
 
 /**
+ * The regular files inside a tarball, as `package/`-relative paths.
+ *
+ * `tar -tzvf` prints one member per line and is the only listing this script
+ * needs; taking the **last whitespace-separated field** is what makes it work
+ * under both bsdtar (Windows) and GNU tar (the runner), whose columns otherwise
+ * differ. Directory entries end in `/` and are dropped: `pnpm pack` records none,
+ * while repacking with plain `tar` adds `package/`, `package/lib/` and friends,
+ * and those must not count as content.
+ * @param tarball - path to a `.tgz` file.
+ * @returns sorted relative paths.
+ */
+function members(tarball) {
+  return execFileSync('tar', ['-tzvf', tarball], { encoding: 'utf8' })
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => line.split(/\s+/).at(-1))
+    .filter((name) => name.startsWith('package/') && !name.endsWith('/'))
+    .map((name) => name.slice('package/'.length))
+    .filter((name) => name.length > 0)
+    .sort()
+}
+
+/**
  * A digest of what is *inside* a tarball, independent of the archive's own
  * framing.
  *
- * Three things must not affect this. Archive framing: gzip carries an mtime and
- * an OS byte, and only tar's member order is standardised, so a Windows-built
- * release and a CI-built one can share every file and still differ byte for byte.
- * Directory entries: `pnpm pack` records none, while repacking with plain `tar`
- * adds `package/`, `package/lib/` and friends — same files, four extra members.
- * And the listing format: `tar -tv` output differs between bsdtar and GNU tar, so
- * the file list is read from the extracted tree rather than parsed from text.
+ * Two things must not affect this. Archive framing: gzip carries an mtime and an
+ * OS byte, and only tar's member order is standardised, so a Windows-built
+ * release and a CI-built one can share every file and still differ byte for byte
+ * (measured: OS byte `0x0a` versus `0x03`). Directory entries: as above.
  *
- * What matters is the regular files and their bytes; that is what this digests.
+ * What matters is the regular files and their bytes; that is what this digests,
+ * because it is what a user actually installs.
  * @param tarball - path to a `.tgz` file.
  * @returns a hex digest over sorted relative paths and their contents.
  */
 export function contentDigest(tarball) {
-  const scratch = mkdtempSync(join(tmpdir(), 'dsh-digest-'))
-  try {
-    execFileSync('tar', ['-xzf', tarball, '-C', scratch])
-    const root = join(scratch, 'package')
-    const files = []
-    const walk = (dir, prefix) => {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const full = join(dir, entry.name)
-        const relative = prefix === '' ? entry.name : `${prefix}/${entry.name}`
-        if (entry.isDirectory()) walk(full, relative)
-        else if (entry.isFile()) files.push(relative)
-      }
-    }
-    walk(root, '')
-    files.sort()
-
-    const hash = createHash('sha256')
-    for (const relative of files) {
-      hash.update(relative)
-      hash.update('\u0000')
-      hash.update(readFileSync(join(root, relative)))
-      hash.update('\u0000')
-    }
-    return { digest: hash.digest('hex').toUpperCase(), members: files.length }
-  } finally {
-    rmSync(scratch, { recursive: true, force: true })
+  const files = members(tarball)
+  const hash = createHash('sha256')
+  for (const relative of files) {
+    hash.update(relative)
+    hash.update('\u0000')
+    hash.update(execFileSync('tar', ['-xzOf', tarball, `package/${relative}`], { maxBuffer: 64 * 1024 * 1024 }))
+    hash.update('\u0000')
   }
+  return { digest: hash.digest('hex').toUpperCase(), members: files.length }
 }
 
 /** The one tarball this folder is about. */
