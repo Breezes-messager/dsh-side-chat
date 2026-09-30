@@ -1,0 +1,27 @@
+# Loader rows this bundle contributes to a DSH profile.
+#
+# This file is the package's bundle patch: it is what makes
+# dsh-side-chat-plugin a *bundle* (dsh.bundle.patch in package.json) that the
+# in-app plugin manager can install and switch on, instead of a plain dependency
+# someone has to wire into the profile's own cordis.patch.yml by hand.
+#
+# Both values are deliberately the package name. `id` must be unique across a
+# profile: the unrelated npm package `dsh-side-chat` (someone else's "parallel
+# side conversation" plugin) inserts a row with the id `side-chat` and the name
+# `dsh-side-chat`, and two rows sharing one id in a single profile register
+# twice and crash. `name` must stay the bare package name — the client module
+# table attaches a package's browser half to the Loader row whose specifier is
+# exactly the package name, so a relative path, an alias, or a `/client` suffix
+# would load the Host half without the sidebar tab.
+#
+# This row ships without a `config:` block on purpose: every setting has a
+# working default, and the important one — `trust` — defaults to `same-origin`,
+# which refuses a cross-site `Origin` and otherwise defers to the Host's own
+# check. That is what lets the desktop app's forwarded request through (Electron
+# strips `Origin` and re-adds only the Host cookie) while still blocking a page
+# on another site. Add a `config:` block only to change something; the fields and
+# their defaults are documented in the README and validated by the plugin's own
+# Config schema.
+- insert:
+    - id: dsh-side-chat-plugin
+      name: dsh-side-chat-plugin

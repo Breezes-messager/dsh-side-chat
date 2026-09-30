@@ -106,6 +106,8 @@ export function foldTranscript(
   const clipped = selected.map(message => ({ ...message, text: clip(message.text, budget.maxMessageChars) }))
 
   // Keep the newest context that fits, then restore log order for the prompt.
+  // The newest message is kept even when it alone exceeds the budget: it is the
+  // turn the question was asked about, and an excerpt without it reads as noise.
   const kept: ContextMessage[] = []
   let used = 0
   for (let index = clipped.length - 1; index >= 0; index -= 1) {

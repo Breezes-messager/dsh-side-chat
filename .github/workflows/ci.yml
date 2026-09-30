@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The plugin ships ES2024 and uses Node's built-in test-free ESM tooling;
+        # both current LTS lines must work for someone building from source.
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm run build
+
+      # `pnpm pack` runs the `prepack` script, so this also proves a publish
+      # always ships freshly built artifacts rather than a stale lib/.
+      - name: Pack and check the published file list
+        run: |
+          pnpm pack --pack-destination "$RUNNER_TEMP"
+          node scripts/check-pack.mjs "$(ls "$RUNNER_TEMP"/dsh-side-chat-plugin-*.tgz | head -n 1)"
+
+      # The self-check must fail loudly on a machine without the plugin, so a
+      # user never reads "all good" from an empty profile.
+      - name: Self-check reports a missing installation
+        run: |
+          set +e
+          node scripts/verify.mjs --home "$RUNNER_TEMP/empty-home" > "$RUNNER_TEMP/verify.txt" 2>&1
+          status=$?
+          set -e
+          cat "$RUNNER_TEMP/verify.txt"
+          test "$status" -eq 1

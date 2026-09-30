@@ -33,4 +33,20 @@ describe('side-chat wire framing', () => {
     const decoded = decodeFrames(`data: {not json}\n\n${encodeFrame({ type: 'done' })}`)
     expect(decoded.frames).toEqual([{ type: 'done' }])
   })
+
+  it('carries a translatable code beside the readable message', () => {
+    const frame: SideChatFrame = {
+      type: 'error',
+      code: 'model-route-missing',
+      message: 'Side chat cannot answer yet: no model is available.',
+    }
+    expect(decodeFrames(encodeFrame(frame)).frames).toEqual([frame])
+  })
+
+  it('still reads an error frame from a Host that carries no code', () => {
+    // The browser half has to keep working against an older Host half, so `code`
+    // stays optional and its absence is not a decode failure.
+    const decoded = decodeFrames('data: {"type":"error","message":"boom"}\n\n')
+    expect(decoded.frames).toEqual([{ type: 'error', message: 'boom' }])
+  })
 })

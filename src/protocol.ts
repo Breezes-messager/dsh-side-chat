@@ -18,7 +18,7 @@ export const SIDE_CHAT_KIND = 'side-chat'
  * across every registration in the process — the package name is the value the
  * tab kit documents for this.
  */
-export const SIDE_CHAT_TAB_ID = 'dsh-side-chat'
+export const SIDE_CHAT_TAB_ID = 'dsh-side-chat-plugin'
 
 /** Copy namespace registered with the client locale service. */
 export const SIDE_CHAT_NS = 'sideChat'
@@ -64,11 +64,30 @@ export interface SideChatAskRequest {
   readonly model?: { readonly provider: string; readonly model: string }
 }
 
+/**
+ * Why an answer stopped, as a value the browser can translate.
+ *
+ * `message` on the same frame is a readable English fallback; a client that has
+ * its own copy asks the dictionary for `code` and falls back to `message` when
+ * it does not know the code yet.
+ */
+export type SideChatErrorCode =
+  /** No provider/model could be resolved: nothing is configured and no Session offers a route. */
+  | 'model-route-missing'
+  /** The Host has no `llm` service to call. */
+  | 'model-service-missing'
+  /** The provider itself refused or failed the call. */
+  | 'model-failed'
+  /** The answer exceeded the configured time limit and was stopped. */
+  | 'request-timeout'
+  /** Anything unexpected; the detail goes to the Host log, not to the panel. */
+  | 'internal-error'
+
 /** One server-sent frame of an answer. */
 export type SideChatFrame =
   | { readonly type: 'text'; readonly text: string }
   | { readonly type: 'notice'; readonly text: string }
-  | { readonly type: 'error'; readonly message: string }
+  | { readonly type: 'error'; readonly message: string; readonly code?: SideChatErrorCode }
   | { readonly type: 'done' }
 
 /** Encode one frame as an SSE event. */

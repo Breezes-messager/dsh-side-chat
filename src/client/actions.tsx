@@ -29,10 +29,11 @@ export function SideChatHeaderButton({ t = fallbackTranslate, open }: HeaderButt
       type="button"
       className={CLASS.headerButton}
       title={t('header.open')}
+      aria-label={t('a11y.open')}
       onClick={() => { open?.() }}
     >
       <SideChatGlyph size={15} />
-      <span>{t('header.open')}</span>
+      <span className={CLASS.headerLabel}>{t('header.open')}</span>
     </button>
   )
 }

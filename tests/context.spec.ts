@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import {
   buildPrompt,
   clip,
@@ -157,5 +158,123 @@ describe('prompt assembly', () => {
       userLabel: 'User',
     })
     expect(prompt.messages).toEqual([{ role: 'user', content: 'hello' }])
+  })
+})
+
+describe('transcript folding at its edges', () => {
+  /** The cost `foldTranscript` charges one context message. */
+  const cost = (text: string): number => text.length + 16
+
+  it('folds nothing out of an empty log', () => {
+    expect(foldTranscript([])).toEqual([])
+    expect(foldTranscript([], { messageIds: ['m-1'] })).toEqual([])
+  })
+
+  it('folds a log that only ever heard from the user', () => {
+    const folded = foldTranscript([userEvent(1, 'only'), userEvent(2, 'question')])
+    expect(folded).toEqual([
+      { role: 'user', text: 'only', id: 'u1' },
+      { role: 'user', text: 'question', id: 'u2' },
+    ])
+  })
+
+  it('returns nothing when the named messages are not in the log', () => {
+    const log = [userEvent(1, 'first'), assistantEvent(2, 'answer')]
+    expect(foldTranscript(log, { messageIds: ['nope'] })).toEqual([])
+    expect(foldTranscript(log, { messageIds: ['nope', 'u1'] }).map(message => message.id)).toEqual(['u1'])
+  })
+
+  it('keeps log order however the messages were named, without repeating one', () => {
+    const log = [userEvent(1, 'first'), assistantEvent(2, 'answer'), userEvent(4, 'second')]
+    expect(foldTranscript(log, { messageIds: ['u4', 'u1', 'u4'] }).map(message => message.id))
+      .toEqual(['u1', 'u4'])
+  })
+
+  it('never matches a message that carries no id', () => {
+    const anonymous: SessionEventLike = {
+      type: 'user/message',
+      seq: 1,
+      data: { message: { role: 'user', content: [{ type: 'text', text: 'no id here' }] } },
+    }
+    expect(foldTranscript([anonymous], { messageIds: ['u1'] })).toEqual([])
+    expect(foldTranscript([anonymous], { budget: { recentMessages: 1, maxMessageChars: 10, maxContextChars: 10 } }))
+      .toEqual([{ role: 'user', text: 'no id here' }])
+  })
+
+  it('counts the recent window exactly', () => {
+    const log = [userEvent(1, 'a'), userEvent(2, 'b'), userEvent(3, 'c'), userEvent(4, 'd')]
+    const window = (recentMessages: number): string[] => foldTranscript(log, {
+      budget: { recentMessages, maxMessageChars: 100, maxContextChars: 10_000 },
+    }).map(message => message.text)
+    expect(window(4)).toEqual(['a', 'b', 'c', 'd'])
+    expect(window(3)).toEqual(['b', 'c', 'd'])
+    expect(window(1)).toEqual(['d'])
+    // Zero is a legitimate budget: the caller asked for no context at all.
+    expect(window(0)).toEqual([])
+    expect(window(99)).toEqual(['a', 'b', 'c', 'd'])
+  })
+
+  it('clips exactly at the per-message limit', () => {
+    const atLimit = 'x'.repeat(10)
+    const justOver = 'x'.repeat(11)
+    const fold = (text: string): string => foldTranscript([userEvent(1, text)], {
+      budget: { recentMessages: 1, maxMessageChars: 10, maxContextChars: 10_000 },
+    })[0]?.text ?? ''
+    expect(fold(atLimit)).toBe(atLimit)
+    expect(fold(justOver)).toContain('(1 more characters omitted)')
+    expect(fold(justOver).startsWith('x'.repeat(10))).toBe(true)
+  })
+
+  it('keeps the newest message whatever the whole-excerpt budget says', () => {
+    // The newest turn is the reason the question was asked, so it survives even a
+    // budget smaller than itself; the module documents that carve-out.
+    const folded = foldTranscript([userEvent(1, 'a long enough message')], {
+      budget: { recentMessages: 5, maxMessageChars: 100, maxContextChars: 0 },
+    })
+    expect(folded).toHaveLength(1)
+  })
+
+  it('drops the second-newest message exactly one character over budget', () => {
+    const older = 'older'
+    const newer = 'newer'
+    const log = [userEvent(1, older), userEvent(2, newer)]
+    const fits = cost(older) + cost(newer)
+    const fold = (maxContextChars: number): string[] => foldTranscript(log, {
+      budget: { recentMessages: 5, maxMessageChars: 100, maxContextChars },
+    }).map(message => message.text)
+    expect(fold(fits)).toEqual([older, newer])
+    expect(fold(fits - 1)).toEqual([newer])
+  })
+
+  it('measures the whole-excerpt budget on clipped text, not the original', () => {
+    const long = 'y'.repeat(500)
+    const log = [userEvent(1, long), userEvent(2, 'short')]
+    // Clipped to 100 characters, the first message costs cost(clip) instead of cost(500).
+    const clipped = clip(long, 100)
+    const fold = (maxContextChars: number): string[] => foldTranscript(log, {
+      budget: { recentMessages: 5, maxMessageChars: 100, maxContextChars },
+    }).map(message => message.text)
+    expect(fold(cost(clipped) + cost('short'))).toHaveLength(2)
+    expect(fold(cost(clipped) + cost('short') - 1)).toEqual(['short'])
+  })
+
+  it('applies the recent window before the whole-excerpt budget', () => {
+    const log = [userEvent(1, 'dropped by the window'), userEvent(2, 'c'), userEvent(3, 'd')]
+    const folded = foldTranscript(log, {
+      budget: { recentMessages: 2, maxMessageChars: 100, maxContextChars: 10_000 },
+    })
+    expect(folded.map(message => message.text)).toEqual(['c', 'd'])
+  })
+})
+
+describe('this module stays portable', () => {
+  it('imports nothing but its sibling files', () => {
+    // context.ts is the one module both halves could share: folding a log must
+    // never drag a runtime along with it, so every import has to stay relative.
+    const source = readFileSync(new URL('../src/context.ts', import.meta.url), 'utf8')
+    const specifiers = [...source.matchAll(/^\s*import\s+(?:type\s+)?[^'\n]*from\s+'([^']+)'|^\s*import\s+'([^']+)'/gm)]
+      .map(match => match[1] ?? match[2] ?? '')
+    expect(specifiers.length).toBeGreaterThan(0)
+    for (const specifier of specifiers) expect(specifier, specifier).toMatch(/^\.\//)
   })
 })

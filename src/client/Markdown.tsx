@@ -7,7 +7,7 @@
  * emitted only for the schemes {@link parseInline} accepts, and always open in a
  * new tab without handing the opener over.
  */
-import type { CSSProperties, ReactNode } from 'react'
+import { memo, useMemo, type CSSProperties, type ReactNode } from 'react'
 import { highlightCode, type HighlightNode } from './highlight.ts'
 import { parseInline, parseMarkdown, type Block, type Inline, type TableAlign } from './markdown.ts'
 import { CLASS } from './styles.ts'
@@ -143,10 +143,15 @@ function renderBlock(block: Block, key: string): ReactNode {
 
 /**
  * Draw one Markdown document.
+ *
+ * Memoized on the text: the composer keeps its state in the same component tree
+ * as every answer, so without this a single keystroke would re-parse and
+ * re-render the whole transcript — O(n²) work over a long answer, felt as a
+ * lagging caret.
  * @param props - the raw text to render.
  * @returns the rendered blocks.
  */
-export function Markdown({ text }: { readonly text: string }) {
-  const blocks = parseMarkdown(text)
+export const Markdown = memo(function Markdown({ text }: { readonly text: string }) {
+  const blocks = useMemo(() => parseMarkdown(text), [text])
   return <div className={CLASS.mdRoot}>{blocks.map((block, index) => renderBlock(block, `b${index}`))}</div>
-}
+})

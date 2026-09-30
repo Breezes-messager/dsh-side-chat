@@ -24,7 +24,33 @@ const PLATFORM_MODULES = [
   '@deepseek-ai/dsh-client-ui-dockkit',
 ]
 
-const PACKAGE_NAME = 'dsh-side-chat'
+// Must equal package.json's `name`. The client module table attaches a package's
+// browser half to the Loader row whose specifier is exactly this value, so a
+// mismatch loads the Host half and silently never renders the sidebar tab.
+const PACKAGE_NAME = 'dsh-side-chat-plugin'
+
+/**
+ * Runtime packages that must travel inside the Host artifact.
+ *
+ * The Harness provides its own packages to a plugin at run time — except
+ * Schemastery, which the plugin needs for its Config schema and which a user's
+ * profile has no reason to hold. Inlining it (and the two small packages it
+ * pulls in) is what keeps `lib/index.js` free of every external import but its
+ * own sibling module.
+ *
+ * Because all three are inlined, Schemastery must stay a **devDependency**:
+ * listing it under `dependencies` would make every install resolve it from a
+ * registry even though the built artifact never imports it, which breaks
+ * installing the packed tarball on a machine with no network. Measured: with it
+ * declared, `pnpm install --offline` against an unreachable registry fails with
+ * ERR_PNPM_NO_OFFLINE_META; with it only in devDependencies the same install
+ * succeeds and the imported `lib/index.js` still exposes a working Config.
+ */
+const INLINED_RUNTIME = [
+  '@deepseek-ai/schemastery',
+  '@deepseek-ai/cosmokit',
+  '@standard-schema/spec',
+]
 
 export default defineConfig([
   {
@@ -40,10 +66,15 @@ export default defineConfig([
     dts: true,
     clean: true,
     deps: {
-      // The Harness provides every @deepseek-ai package at runtime; nothing is
-      // vendored into this artifact and nothing is installed with the plugin.
-      neverBundle: [/^@deepseek-ai\//, /^node:/],
-      alwaysBundle: () => false,
+      // Node builtins stay external, and everything the Host half imports at run
+      // time is inlined — which is exactly `@deepseek-ai/schemastery`, the Config
+      // schema. A user's profile has no reason to already hold Schemastery (the
+      // Host does not hand it to plugins), so leaving it external would be a load
+      // failure waiting to happen. `alwaysBundle` is what forces it: tsdown
+      // externalizes a package.json `dependency` by default, and dropping it from
+      // `neverBundle` alone leaves the import in the artifact.
+      neverBundle: [/^node:/],
+      alwaysBundle: INLINED_RUNTIME,
     },
   },
   {

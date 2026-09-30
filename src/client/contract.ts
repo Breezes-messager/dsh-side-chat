@@ -72,14 +72,21 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
+/** The tab actions a body may take on the tab it is drawn in. */
+export interface TabActionsLike {
+  /** Close this tab, the way the tab strip's own close control does. */
+  readonly close?: () => void
+}
+
 /** The tab record a body reads through its props. */
 export interface TabRecordLike {
   readonly navigation: {
     readonly params?: unknown
     readonly revision?: number
   }
+  /** Only the foreground Session is visible; a hidden body must not steal focus. */
   readonly visible?: boolean
-  readonly actions?: unknown
+  readonly actions?: TabActionsLike
 }
 
 /** Props every session-scoped slot occupant receives, whatever else it declares. */

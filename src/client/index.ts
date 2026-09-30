@@ -22,6 +22,7 @@ import {
 } from '../protocol.ts'
 import { AskInSideChatAction, SideChatHeaderButton } from './actions.tsx'
 import { en, zh } from './locales.ts'
+import { publishNotice } from './notice.ts'
 import { SideChatBody } from './panel.tsx'
 import { SideChatSelectionAction } from './selection-action.tsx'
 
@@ -35,7 +36,9 @@ export const inject = ['slots', 'locale', 'sidebarRightTabs', 'sidebarRight']
  * Open the side-chat tab, reporting a wiring failure instead of swallowing it.
  *
  * `openTab` throws when the column has no mounted Session surface or nobody
- * registered the kind; either would otherwise look like a dead button.
+ * registered the kind. Both used to look like a dead button: the click did
+ * nothing at all. The console warning stays for whoever is debugging, and the
+ * notice bar tells the person who clicked what to do about it.
  * @param ctx - client context carrying the navigation controller.
  * @param params - what the panel is being opened on.
  */
@@ -44,6 +47,10 @@ function openPanel(ctx: Context, params?: Record<string, unknown>): void {
     ctx.sidebarRight.openTab(SIDE_CHAT_KIND, params === undefined ? undefined : { params })
   } catch (error: unknown) {
     console.warn('dsh-side-chat: could not open the panel', error)
+    publishNotice({
+      key: 'notice.openFailed',
+      detail: error instanceof Error ? error.message : String(error),
+    })
   }
 }
 

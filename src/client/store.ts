@@ -5,6 +5,7 @@
  * that answers one question at a time, and the store dies with the page. That is
  * the entire implementation of "closing the app makes it disappear".
  */
+import type { SideChatFailure } from './failure.ts'
 import type { SideChatTurn } from '../protocol.ts'
 
 /** One message drawn in the panel. */
@@ -14,8 +15,8 @@ export interface SideChatMessage {
   readonly text: string
   /** True while the answer is still arriving. */
   readonly pending?: boolean
-  /** Set when the turn failed instead of answering. */
-  readonly failed?: boolean
+  /** Set when the turn failed instead of answering; the panel turns it into copy. */
+  readonly failure?: SideChatFailure
 }
 
 /** One session's side-chat state. */
@@ -43,10 +44,10 @@ export interface SideChatStore {
   begin(question: string): string
   /** Append streamed text to a pending answer. */
   append(answerId: string, text: string): void
-  /** Settle a pending answer that finished normally. */
+  /** Settle a pending answer that finished normally; an answer with no text fails as empty. */
   settle(answerId: string): void
   /** Settle a pending answer that failed, keeping the reason on screen. */
-  fail(answerId: string, message: string): void
+  fail(answerId: string, failure: SideChatFailure): void
   /** Drop every message, keeping the panel where it is. */
   clear(): void
 }
@@ -66,6 +67,14 @@ function createStore(): SideChatStore {
   const publish = (next: Omit<SideChatState, 'revision'>): void => {
     state = { ...next, revision: state.revision + 1 }
     for (const listener of listeners) listener()
+  }
+
+  /** Replace one message; a fresh array keeps the snapshot identity honest. */
+  const patch = (answerId: string, change: (message: SideChatMessage) => SideChatMessage): void => {
+    publish({
+      ...state,
+      messages: state.messages.map(message => message.id === answerId ? change(message) : message),
+    })
   }
 
   return {
@@ -98,28 +107,22 @@ function createStore(): SideChatStore {
     },
     append(answerId, text) {
       if (text.length === 0) return
-      publish({
-        ...state,
-        messages: state.messages.map(message =>
-          message.id === answerId ? { ...message, text: message.text + text } : message),
-      })
+      patch(answerId, message => ({ ...message, text: message.text + text }))
     },
     settle(answerId) {
+      const target = state.messages.find(message => message.id === answerId)
+      const empty = target !== undefined && target.failure === undefined && target.text.trim().length === 0
       publish({
         ...state,
         streaming: false,
-        messages: state.messages.map(message =>
-          message.id === answerId ? { ...message, pending: false } : message),
+        messages: state.messages.map(message => message.id === answerId
+          ? { ...message, pending: false, ...(empty ? { failure: { code: 'empty' as const } } : {}) }
+          : message),
       })
     },
-    fail(answerId, message) {
-      publish({
-        ...state,
-        streaming: false,
-        messages: state.messages.map(entry => entry.id === answerId
-          ? { ...entry, pending: false, failed: true, text: entry.text.length > 0 ? entry.text : message }
-          : entry),
-      })
+    fail(answerId, failure) {
+      patch(answerId, message => ({ ...message, pending: false, failure }))
+      publish({ ...state, streaming: false })
     },
     clear() {
       publish({ messages: [], streaming: false, contextMessageId: undefined, selection: undefined })
@@ -142,13 +145,22 @@ export function storeFor(sessionId: string): SideChatStore {
   return created
 }
 
-/** Fold the settled turns a request carries as history. */
+/**
+ * Fold the settled turns a request carries as history.
+ *
+ * A question whose answer never arrived — failed, stopped, or still streaming —
+ * is not part of the conversation the next question continues from, so it is
+ * dropped rather than sent as a dangling user turn.
+ * @param state - the session's current state.
+ * @returns the settled turns, oldest first.
+ */
 export function historyOf(state: SideChatState): SideChatTurn[] {
   const history: SideChatTurn[] = []
   for (const message of state.messages) {
-    if (message.pending === true || message.failed === true) continue
+    if (message.pending === true || message.failure !== undefined) continue
     if (message.text.trim().length === 0) continue
     history.push({ role: message.role, text: message.text })
   }
+  while (history.length > 0 && history[history.length - 1]?.role === 'user') history.pop()
   return history
 }

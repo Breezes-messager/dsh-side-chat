@@ -1,4 +1,4 @@
-﻿/**
+/**
  * The panel's stylesheet, injected once per page from TypeScript.
  *
  * A standalone plugin ships no build-time CSS pipeline, and the panel is one
@@ -17,6 +17,7 @@ export const CLASS = {
   emptyIcon: 'sc-empty-icon',
   emptyTitle: 'sc-empty-title',
   emptyBody: 'sc-empty-body',
+  emptyHint: 'sc-empty-hint',
   transcript: 'sc-transcript',
   turn: 'sc-turn',
   turnUser: 'sc-turn-user',
@@ -24,6 +25,13 @@ export const CLASS = {
   assistant: 'sc-assistant',
   caret: 'sc-caret',
   error: 'sc-error',
+  failure: 'sc-failure',
+  failureError: 'sc-failure-error',
+  failureDetail: 'sc-failure-detail',
+  partial: 'sc-partial',
+  notice: 'sc-notice',
+  noticeText: 'sc-notice-text',
+  noticeClose: 'sc-notice-close',
   context: 'sc-context',
   footer: 'sc-footer',
   composer: 'sc-composer',
@@ -31,6 +39,7 @@ export const CLASS = {
   send: 'sc-send',
   ghost: 'sc-ghost',
   headerButton: 'sc-header-button',
+  headerLabel: 'sc-header-label',
   messageAction: 'sc-message-action',
   contextText: 'sc-context-text',
   contextClear: 'sc-context-clear',
@@ -62,6 +71,13 @@ export const PANEL_CSS = `
   color: var(--dsw-alias-label-primary, inherit);
   font-size: 13px;
 }
+/* Keyboard users must be able to see where they are: the panel's controls are
+   plain text at rest, so focus needs a ring of its own. */
+.sc-root :focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary, #4d6bfe);
+  outline-offset: 1px;
+  border-radius: 6px;
+}
 .sc-empty {
   flex: 1;
   display: flex;
@@ -80,6 +96,15 @@ export const PANEL_CSS = `
   color: var(--dsw-alias-label-secondary, currentColor);
   font-size: 13px;
   line-height: 1.7;
+}
+/* What to do with the panel, for someone opening it for the first time. */
+.sc-empty-hint {
+  margin: 0;
+  max-width: 250px;
+  color: var(--dsw-alias-label-secondary, currentColor);
+  font-size: 12px;
+  line-height: 1.7;
+  opacity: 0.85;
 }
 .sc-transcript {
   flex: 1;
@@ -152,7 +177,29 @@ export const PANEL_CSS = `
   animation: sc-blink 1s steps(2, start) infinite;
 }
 @keyframes sc-blink { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .sc-caret { animation: none; }
+}
 .sc-error { color: var(--dsw-alias-state-error-primary, #d9534f); }
+/* A turn that ended without an answer: the reason first, the raw text under it. */
+.sc-failure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  color: var(--dsw-alias-label-secondary, currentColor);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.sc-failure-error { color: var(--dsw-alias-state-error-primary, #d9534f); }
+.sc-failure-detail {
+  color: var(--dsw-alias-label-secondary, currentColor);
+  font-size: 11px;
+  word-break: break-word;
+  opacity: 0.8;
+}
+/* Text streamed before the turn failed: literal, never parsed as Markdown. */
+.sc-partial { white-space: pre-wrap; word-break: break-word; }
 .sc-context {
   display: flex;
   align-items: center;
@@ -208,6 +255,40 @@ export const PANEL_CSS = `
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
 }
 .sc-selection-button:hover { border-color: var(--dsw-alias-border-l2, currentColor); }
+/* The frame-wide notice: the only voice a click has when no panel can open. */
+.sc-notice {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 61;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(560px, calc(100vw - 48px));
+  padding: 9px 10px 9px 13px;
+  border: 0.5px solid var(--dsw-alias-border-l1, rgba(127, 127, 127, 0.3));
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-overlay, #fff);
+  color: var(--dsw-alias-label-primary, inherit);
+  font-size: 12px;
+  line-height: 1.5;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16);
+}
+.sc-notice-text { flex: 1; min-width: 0; }
+.sc-notice-close {
+  flex: none;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 3px;
+  opacity: 0.7;
+}
+.sc-notice-close:hover { opacity: 1; }
 .sc-footer {
   display: flex;
   align-items: center;
@@ -243,11 +324,15 @@ export const PANEL_CSS = `
   padding: 0 14px;
   border: none;
   border-radius: 10px;
-  background: var(--dsw-alias-brand-primary, #4d6bfe);
-  color: #fff;
+  /* The theme's own primary-button pair. A hard-coded white label on the brand
+     token reads as an empty button in a dark theme, where that token is
+     near-white: both halves have to come from the theme. */
+  background: var(--dsw-alias-button-primary-fill, #4d6bfe);
+  color: var(--dsw-alias-label-primary-foreground, #fff);
   font: inherit;
   cursor: pointer;
 }
+.sc-send:hover:not(:disabled) { background: var(--dsw-alias-button-primary-hover, #3f56d0); }
 .sc-send:disabled { opacity: 0.45; cursor: default; }
 .sc-ghost {
   border: none;
@@ -262,6 +347,7 @@ export const PANEL_CSS = `
 .sc-ghost:hover { opacity: 1; }
 .sc-header-button {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 5px;
   height: 26px;
@@ -274,8 +360,15 @@ export const PANEL_CSS = `
   font-size: 12px;
   cursor: pointer;
   opacity: 0.78;
+  /* A crowded header row must never squeeze this control: shrinking it past its
+     content makes the label overlap the neighbour on both sides. */
+  min-width: max-content;
+  white-space: nowrap;
 }
 .sc-header-button:hover { background: var(--dsw-alias-bg-layer-2, rgba(127, 127, 127, 0.14)); opacity: 1; }
+/* The glyph keeps its box; the label simply cannot wrap. */
+.sc-header-button > svg { flex: 0 0 auto; }
+.sc-header-label { white-space: nowrap; }
 .sc-message-action {
   display: inline-flex;
   align-items: center;

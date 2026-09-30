@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react'
 import { fallbackTranslate } from './locales.ts'
 import { SideChatGlyph } from './icons.tsx'
+import { SideChatNoticeBar } from './Notice.tsx'
 import { CLASS, ensureStyles } from './styles.ts'
 
 /** Shortest selection worth offering the action for. */
@@ -70,33 +71,46 @@ export function SideChatSelectionAction({ t = fallbackTranslate, openWithSelecti
     document.addEventListener('selectionchange', read)
     document.addEventListener('mouseup', read, true)
     document.addEventListener('keyup', read, true)
+    // Scrolling moves the anchor out from under the button, and leaving the
+    // window makes the selection ambient rather than deliberate: both hide it.
     window.addEventListener('scroll', clear, true)
     window.addEventListener('resize', clear)
+    window.addEventListener('blur', clear)
+    document.addEventListener('visibilitychange', clear)
     return () => {
       document.removeEventListener('selectionchange', read)
       document.removeEventListener('mouseup', read, true)
       document.removeEventListener('keyup', read, true)
       window.removeEventListener('scroll', clear, true)
       window.removeEventListener('resize', clear)
+      window.removeEventListener('blur', clear)
+      document.removeEventListener('visibilitychange', clear)
     }
   }, [])
 
-  if (anchor === undefined) return null
   return (
-    <button
-      type="button"
-      className={CLASS.selectionButton}
-      style={{ left: `${anchor.x}px`, top: `${anchor.y}px` }}
-      // Keeping the selection alive keeps the context the user just chose.
-      onMouseDown={(event) => { event.preventDefault() }}
-      onClick={() => {
-        openWithSelection?.(anchor.text)
-        window.getSelection()?.removeAllRanges()
-        setAnchor(undefined)
-      }}
-    >
-      <SideChatGlyph size={14} />
-      <span>{t('action.ask')}</span>
-    </button>
+    <>
+      {anchor === undefined
+        ? null
+        : (
+            <button
+              type="button"
+              className={CLASS.selectionButton}
+              style={{ left: `${anchor.x}px`, top: `${anchor.y}px` }}
+              aria-label={t('action.ask')}
+              // Keeping the selection alive keeps the context the user just chose.
+              onMouseDown={(event) => { event.preventDefault() }}
+              onClick={() => {
+                openWithSelection?.(anchor.text)
+                window.getSelection()?.removeAllRanges()
+                setAnchor(undefined)
+              }}
+            >
+              <SideChatGlyph size={14} />
+              <span>{t('action.ask')}</span>
+            </button>
+          )}
+      <SideChatNoticeBar t={t} />
+    </>
   )
 }

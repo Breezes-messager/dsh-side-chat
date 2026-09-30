@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      highlight.js:
-        specifier: ^11.12.0
-        version: 11.12.0
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: 4.0.4
@@ -51,6 +47,9 @@ importers:
       '@deepseek-ai/dsh-session-query':
         specifier: 0.1.7-rc.2
         version: 0.1.7-rc.2(83324619e089dc693dc59565ce15132b)
+      '@deepseek-ai/schemastery':
+        specifier: ~3.18.4
+        version: 3.18.4
       '@types/node':
         specifier: ^24.0.0
         version: 24.19.0
@@ -60,6 +59,9 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.0
         version: 18.3.0
+      highlight.js:
+        specifier: ^11.12.0
+        version: 11.12.0
       react:
         specifier: ^18.2.0
         version: 18.2.0

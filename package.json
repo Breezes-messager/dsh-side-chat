@@ -1,27 +1,48 @@
 {
-  "name": "dsh-side-chat",
-  "version": "0.1.0",
-  "description": "Codex's side chat (侧边聊天) implemented for DeepSeek Harness: a temporary, in-memory conversation in the right Sidebar that disappears when the app closes",
+  "name": "dsh-side-chat-plugin",
+  "version": "0.2.0",
+  "description": "Side chat (侧边聊天) for DeepSeek Harness: a temporary, in-memory conversation in the right sidebar that leaves no trace when the app closes",
   "type": "module",
   "license": "MIT",
+  "author": "Breezes-messager (https://github.com/Breezes-messager)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Breezes-messager/dsh-side-chat.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Breezes-messager/dsh-side-chat/issues"
+  },
+  "homepage": "https://github.com/Breezes-messager/dsh-side-chat#readme",
+  "icon": "./icon.svg",
   "main": "lib/index.js",
-  "types": "lib/types/index.d.ts",
+  "types": "lib/index.d.ts",
+  "sideEffects": [
+    "lib/client.js"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.7.0",
   "exports": {
     ".": {
-      "types": "./lib/types/index.d.ts",
+      "types": "./lib/index.d.ts",
       "default": "./lib/index.js"
     },
     "./client": {
-      "types": "./lib/types/client/index.d.ts",
       "default": "./lib/client.js"
     },
     "./protocol": {
-      "types": "./lib/types/protocol.d.ts",
+      "types": "./lib/protocol.d.ts",
       "default": "./lib/protocol.js"
     },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
   },
   "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
     "client": {
       "platform": "web",
       "inject": [
@@ -35,21 +56,36 @@
     "lib/index.js",
     "lib/protocol.js",
     "lib/client.js",
-    "lib/types/**/*.d.ts"
+    "lib/client.js.map",
+    "lib/index.d.ts",
+    "lib/protocol.d.ts",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "scripts/verify.mjs"
   ],
   "scripts": {
     "build": "tsdown",
     "watch": "tsdown --watch",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify": "node scripts/verify.mjs",
+    "prepack": "tsdown"
   },
   "keywords": [
     "deepseek-harness",
     "dsh",
     "dsh-plugin",
+    "dsh-bundle",
     "side-chat",
-    "codex"
+    "sidebar",
+    "temporary-chat",
+    "cordis"
   ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.4"
   },
@@ -70,13 +106,12 @@
     "@types/node": "^24.0.0",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.0",
+    "@deepseek-ai/schemastery": "~3.18.4",
+    "highlight.js": "^11.12.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tsdown": "^0.22.2",
     "typescript": "^5.9.0",
     "vitest": "^4.1.8"
-  },
-  "dependencies": {
-    "highlight.js": "^11.12.0"
   }
 }

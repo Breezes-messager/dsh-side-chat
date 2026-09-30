@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Side chat">
+  <title>Side chat</title>
+  <!-- Self-contained artwork: an <img> gets no theme context, so this carries
+       its own colors and must stay readable on light and dark surfaces. -->
+  <rect x="1" y="3" width="30" height="26" rx="6" fill="#4D6BFE"/>
+  <rect x="20.5" y="6.5" width="7" height="19" rx="3" fill="#FFFFFF" fill-opacity="0.22"/>
+  <path d="M7.5 9.5H15.5A3 3 0 0 1 18.5 12.5V18A3 3 0 0 1 15.5 21H11.5L8 24.5V21H7.5A3 3 0 0 1 4.5 18V12.5A3 3 0 0 1 7.5 9.5Z" fill="#FFFFFF"/>
+  <circle cx="8.5" cy="15.2" r="1" fill="#4D6BFE"/>
+  <circle cx="11.5" cy="15.2" r="1" fill="#4D6BFE"/>
+  <circle cx="14.5" cy="15.2" r="1" fill="#4D6BFE"/>
+</svg>
