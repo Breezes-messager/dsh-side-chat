@@ -52,36 +52,44 @@ It **cannot** run commands, edit files, or look anything up. It answers question
 ## Install
 
 > [!IMPORTANT]
-> **This package is not on npm yet** (as of 2026-09-30), so **Option 1 below does not work today** — you would hit "package not found" at step 6. Use **Option 2** (from source) for now. Once it is published, delete this notice and Option 1 works as written.
+> **This package is not on npm yet** (as of 2026-09-30), so **Option 3 below does not work today**. Use **Option 1 — the prebuilt package**: it needs no npm account, no Node and no pnpm.
 
 ### Before you start
 
 1. Your DeepSeek Harness works: open a conversation, send a message, get an answer. **A side chat borrows the same model route as your main conversation** — if the main one cannot answer, neither can this.
 2. You have a browser surface: the **desktop app**, or **DSH Web** opened in a browser. This plugin's UI is a web surface; a terminal-only profile will never show it.
 
-### Option 1 (recommended): install from inside DSH
+### Option 1: the prebuilt package (recommended — no npm account)
 
-Works for everyone. No terminal, no files to edit.
+Works for everyone. No terminal, no Node, no pnpm.
 
-1. Open DeepSeek Harness.
-2. In the **left sidebar**, open **Plugins** (中文界面是「插件」).
-3. Click **Add plugin**.
-4. In **Package name or address**, enter:
+1. **Download the prebuilt package.** Open this page and use the download button:
 
+   <https://github.com/Breezes-messager/dsh-side-chat/blob/main/dist/dsh-side-chat-plugin-0.2.0.tgz>
+
+   Or fetch it from a terminal (either platform):
+
+   ```sh
+   curl -L -o dsh-side-chat-plugin-0.2.0.tgz https://raw.githubusercontent.com/Breezes-messager/dsh-side-chat/main/dist/dsh-side-chat-plugin-0.2.0.tgz
    ```
-   dsh-side-chat-plugin
+
+   To check the download, verify its SHA-256 (it should print `900C6A34496058E39702F8445B0AF8963F48A667F2C8E2519EEC57583A8D45F2`):
+
+   ```sh
+   node -e "const c=require('node:crypto'),f=require('node:fs');console.log(c.createHash('sha256').update(f.readFileSync(process.argv[1])).digest('hex').toUpperCase())" dsh-side-chat-plugin-0.2.0.tgz
    ```
 
-5. (Optional) Expand **Registry** and pick **Mainland China mirror** if the default registry is slow.
-6. Click **Install**.
-   - You will see a progress view; when it finishes it shows the package name and version.
-   - If it fails, the dialog explains why in one line (network, wrong package name, unreachable registry) and keeps your input so you can edit it.
-7. Click **Enable now**. (If you miss it, find the `dsh-side-chat-plugin` card under **Installed** and switch it on.)
-8. **Reload the interface**: `Ctrl+R` (`Cmd+R` on macOS) in the desktop app, or close and reopen the app.
+2. Open DeepSeek Harness.
+3. In the **left sidebar**, open **Plugins** (中文界面是「插件」).
+4. Click **Add plugin**.
+5. In **Package name or address**, enter the **absolute path of the file you downloaded**:
+   - Windows: `C:\Users\<you>\Downloads\dsh-side-chat-plugin-0.2.0.tgz`
+   - macOS / Linux: `/Users/<you>/Downloads/dsh-side-chat-plugin-0.2.0.tgz`
+6. Click **Install**, then **Enable now** if it is not enabled, then **reload the interface** (`Ctrl+R` / `Cmd+R`).
 
-That is the whole install. The right Sidebar should now offer "Side chat".
+This route needs **no npm account and no network at install time**: the package has no runtime dependencies, and everything the Host half needs is inlined into it.
 
-> Why there are no files to edit: the package ships a DSH **bundle** declaration. Installing it from the Plugins page puts it into the current profile; clicking **Enable now** applies the plugin row that ships inside the package. You never touch `cordis.patch.yml`.
+> You can also try pasting the download URL into the box instead. **That variant is not verified here** (this development sandbox blocks child processes from reaching an HTTP server, and fetching a URL needs one), so if it fails, download the file first and give the absolute path — that path is verified.
 
 ### Option 2: build from source
 
@@ -123,6 +131,30 @@ Then **reload the interface**, as above.
 > An equivalent no-file-editing route from source: run `pnpm install && pnpm build`, then open **Add plugin** in the app and enter the **absolute path of this directory** (for example `C:\Users\you\dsh-side-chat` or `/Users/you/dsh-side-chat`). Pick one route or the other — do not combine it with `node scripts/install.mjs`; likewise, once you have installed with `node scripts/install.mjs`, do **not** go back and click **Enable now** in the Plugins page — both routes insert the same loader row, and inserting it twice crashes the load.
 
 > Advanced scenarios — CLI-installed profiles, manual installs, private npm registries, fully offline machines: see [docs/advanced-install.zh.md](docs/advanced-install.zh.md) (Chinese, with an English summary at the end).
+
+### Option 3: install from npm (not available yet)
+
+Works for everyone. No terminal, no files to edit.
+
+1. Open DeepSeek Harness.
+2. In the **left sidebar**, open **Plugins** (中文界面是「插件」).
+3. Click **Add plugin**.
+4. In **Package name or address**, enter:
+
+   ```
+   dsh-side-chat-plugin
+   ```
+
+5. (Optional) Expand **Registry** and pick **Mainland China mirror** if the default registry is slow.
+6. Click **Install**.
+   - You will see a progress view; when it finishes it shows the package name and version.
+   - If it fails, the dialog explains why in one line (network, wrong package name, unreachable registry) and keeps your input so you can edit it.
+7. Click **Enable now**. (If you miss it, find the `dsh-side-chat-plugin` card under **Installed** and switch it on.)
+8. **Reload the interface**: `Ctrl+R` (`Cmd+R` on macOS) in the desktop app, or close and reopen the app.
+
+That is the whole install. The right Sidebar should now offer "Side chat".
+
+> Why there are no files to edit: the package ships a DSH **bundle** declaration. Installing it from the Plugins page puts it into the current profile; clicking **Enable now** applies the plugin row that ships inside the package. You never touch `cordis.patch.yml`.
 
 ### Which profile did it install into?
 

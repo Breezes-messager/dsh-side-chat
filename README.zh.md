@@ -52,36 +52,44 @@
 ## 安装
 
 > [!IMPORTANT]
-> **这个包目前还没有发布到 npm**（截至 2026-09-30）。所以**方式一现在走不通**——你会在第 6 步看到"找不到这个包"。请先用**方式二**从源码装。等发布之后，删掉这段提示、方式一即可正常工作。
+> **这个包还没有发布到 npm**（截至 2026-09-30），所以下面的**方式三无法使用**。请用**方式一：预构建包**——不需要 npm 账号，也不需要 Node 或 pnpm。
 
 ### 先确认两件事
 
 1. 你的 DeepSeek Harness 能正常用：打开一个对话，发一句话，能收到回答。**侧边聊天借用主对话的同一条模型通道**，主对话不能用，它也不能用。
 2. 你的 Harness 有浏览器界面：**桌面应用**，或者在浏览器里打开的 **DSH Web 版**。这个插件的界面是网页，纯终端界面里看不到它。
 
-### 方式一（推荐）：在 DSH 应用里安装
+### 方式一：预构建包（推荐 —— 不需要 npm 账号）
 
-适合所有人。不用命令行，不用改任何文件。
+适合所有人。不需要命令行，也不需要装 Node 或 pnpm。
 
-1. 打开 DeepSeek Harness。
-2. 在**左侧栏**找到「插件」（英文界面是 **Plugins**），点开。
-3. 点页面上的「**添加插件**」（**Add plugin**）。
-4. 在「包名或地址」输入框里填：
+1. **下载预构建包。** 打开这个页面并点下载按钮：
 
+   <https://github.com/Breezes-messager/dsh-side-chat/blob/main/dist/dsh-side-chat-plugin-0.2.0.tgz>
+
+   或者用命令行下载（两种平台都适用）：
+
+   ```sh
+   curl -L -o dsh-side-chat-plugin-0.2.0.tgz https://raw.githubusercontent.com/Breezes-messager/dsh-side-chat/main/dist/dsh-side-chat-plugin-0.2.0.tgz
    ```
-   dsh-side-chat-plugin
+
+   想先确认下载完整，校验一下（应打印 `900C6A34496058E39702F8445B0AF8963F48A667F2C8E2519EEC57583A8D45F2`）：
+
+   ```sh
+   node -e "const c=require('node:crypto'),f=require('node:fs');console.log(c.createHash('sha256').update(f.readFileSync(process.argv[1])).digest('hex').toUpperCase())" dsh-side-chat-plugin-0.2.0.tgz
    ```
 
-5. （可选）展开「**安装源**」，选「**中国大陆镜像源**」下载会快一些；默认是 npm 官方源。
-6. 点「**安装**」。
-   - 你会看到进度界面；结束后显示包名和版本。
-   - 如果失败，界面会给出一句说明（网络不通、包名写错、源不可用……），并保留输入内容让你改。
-7. 点「**立即启用**」（如果错过了，就在「已安装」列表里找到 `dsh-side-chat-plugin` 这张卡片，把它打开）。
-8. **重载界面**：桌面应用按 `Ctrl+R`（macOS 是 `Cmd+R`），或者直接关掉应用再打开。
+2. 打开 DeepSeek Harness。
+3. 在**左侧栏**找到「插件」（英文界面是 **Plugins**），点开。
+4. 点「**添加插件**」（**Add plugin**）。
+5. 在「包名或地址」里填**你刚下载那个文件的绝对路径**：
+   - Windows：`C:\Users\<你>\Downloads\dsh-side-chat-plugin-0.2.0.tgz`
+   - macOS / Linux：`/Users/<你>/Downloads/dsh-side-chat-plugin-0.2.0.tgz`
+6. 点「**安装**」→ 需要的话再点「**立即启用**」→ **重载界面**（`Ctrl+R` / `Cmd+R`）。
 
-之后就装好了。右侧栏里应该已经出现「侧边聊天」。
+这条路径**不需要 npm 账号，安装时也不需要联网**：这个包没有运行时依赖，宿主半边需要的代码已经全部内联在包里。
 
-> 为什么不用手动改配置文件：这个包自带 DSH 的**组合包声明**（bundle）。插件页安装时会把它装进当前 profile；点「立即启用」后，DSH 直接应用包内自带的插件行。你不需要碰 `cordis.patch.yml`。
+> 也可以试着在输入框里直接填下载 URL。**这一条我未能在本机验证**（开发环境的沙箱不允许子进程连本机 HTTP，而按 URL 取包需要子进程联网），所以如果它失败，请按上面第 1 步先下载成文件、再填绝对路径——那是本机验证过的做法。
 
 ### 方式二：从源码安装
 
@@ -123,6 +131,30 @@ node scripts/install.mjs --profile desktop --no-build
 > 另一条同样不用手改文件的源码路径：先 `pnpm install && pnpm build`，然后打开应用里的「添加插件」，在输入框里填**这个仓库目录的绝对路径**（例如 `C:\Users\你\dsh-side-chat` 或 `/Users/你/dsh-side-chat`）。二选一，不要和 `node scripts/install.mjs` 叠加使用；同样地，用 `node scripts/install.mjs` 装过之后**不要**再去插件页点「立即启用」——两条路都会插入同一个 Loader 行，插入两次会崩溃。
 
 > 进阶场景——命令行安装、手动安装、私有 npm 源、完全离线的机器：见 [docs/advanced-install.zh.md](docs/advanced-install.zh.md)。
+
+### 方式三：从 npm 安装（尚未可用）
+
+适合所有人。不用命令行，不用改任何文件。
+
+1. 打开 DeepSeek Harness。
+2. 在**左侧栏**找到「插件」（英文界面是 **Plugins**），点开。
+3. 点页面上的「**添加插件**」（**Add plugin**）。
+4. 在「包名或地址」输入框里填：
+
+   ```
+   dsh-side-chat-plugin
+   ```
+
+5. （可选）展开「**安装源**」，选「**中国大陆镜像源**」下载会快一些；默认是 npm 官方源。
+6. 点「**安装**」。
+   - 你会看到进度界面；结束后显示包名和版本。
+   - 如果失败，界面会给出一句说明（网络不通、包名写错、源不可用……），并保留输入内容让你改。
+7. 点「**立即启用**」（如果错过了，就在「已安装」列表里找到 `dsh-side-chat-plugin` 这张卡片，把它打开）。
+8. **重载界面**：桌面应用按 `Ctrl+R`（macOS 是 `Cmd+R`），或者直接关掉应用再打开。
+
+之后就装好了。右侧栏里应该已经出现「侧边聊天」。
+
+> 为什么不用手动改配置文件：这个包自带 DSH 的**组合包声明**（bundle）。插件页安装时会把它装进当前 profile；点「立即启用」后，DSH 直接应用包内自带的插件行。你不需要碰 `cordis.patch.yml`。
 
 ### 它装到了哪个 profile
 

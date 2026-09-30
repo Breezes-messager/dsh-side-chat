@@ -110,15 +110,24 @@ function readTar(buffer) {
 const argument = process.argv.slice(2).find((value) => !value.startsWith('--'))
 let tarball = argument
 if (tarball === undefined) {
-  const candidates = readdirSync(ROOT)
-    .filter((name) => name.startsWith(`${PACKAGE_NAME}-`) && name.endsWith('.tgz'))
-    .sort()
+  // A fresh `pnpm pack` lands in the repository root; the committed release
+  // artifact lives in `dist/`. Prefer the newest of the two, so checking right
+  // after packing validates what was just built.
+  const candidates = [ROOT, join(ROOT, 'dist')].flatMap((directory) => {
+    try {
+      return readdirSync(directory)
+        .filter((name) => name.startsWith(`${PACKAGE_NAME}-`) && name.endsWith('.tgz'))
+        .map((name) => join(directory, name))
+    } catch {
+      return []
+    }
+  }).sort((a, b) => statSync(a).mtimeMs - statSync(b).mtimeMs)
   if (candidates.length === 0) {
-    console.error(`${PACKAGE_NAME}: no tarball given and none found in the repository root`)
+    console.error(`${PACKAGE_NAME}: no tarball given and none found in the repository root or dist/`)
     console.error('               build one with: pnpm pack')
     process.exit(1)
   }
-  tarball = join(ROOT, candidates[candidates.length - 1])
+  tarball = candidates[candidates.length - 1]
 }
 if (!existsSync(tarball)) {
   console.error(`${PACKAGE_NAME}: no such tarball: ${tarball}`)
