@@ -13,7 +13,8 @@
  */
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -26,30 +27,46 @@ const REPO_URL = 'https://github.com/Breezes-messager/dsh-side-chat'
  * A digest of what is *inside* a tarball, independent of the archive's own
  * framing.
  *
- * Byte-identity between two `pnpm pack` runs is a stronger claim than the gate
- * needs, and a platform-dependent one: gzip headers carry an mtime and an OS
- * byte, and only tar's member order is standardised. Comparing the member list
- * and each member's contents asks the question that actually matters — "is the
- * released file a build of these sources?" — without failing on framing.
+ * Three things must not affect this. Archive framing: gzip carries an mtime and
+ * an OS byte, and only tar's member order is standardised, so a Windows-built
+ * release and a CI-built one can share every file and still differ byte for byte.
+ * Directory entries: `pnpm pack` records none, while repacking with plain `tar`
+ * adds `package/`, `package/lib/` and friends — same files, four extra members.
+ * And the listing format: `tar -tv` output differs between bsdtar and GNU tar, so
+ * the file list is read from the extracted tree rather than parsed from text.
+ *
+ * What matters is the regular files and their bytes; that is what this digests.
  * @param tarball - path to a `.tgz` file.
- * @returns a hex digest over sorted member names and their bytes.
+ * @returns a hex digest over sorted relative paths and their contents.
  */
 export function contentDigest(tarball) {
-  const listing = execFileSync('tar', ['-tzf', tarball], { encoding: 'utf8' })
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .sort()
+  const scratch = mkdtempSync(join(tmpdir(), 'dsh-digest-'))
+  try {
+    execFileSync('tar', ['-xzf', tarball, '-C', scratch])
+    const root = join(scratch, 'package')
+    const files = []
+    const walk = (dir, prefix) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name)
+        const relative = prefix === '' ? entry.name : `${prefix}/${entry.name}`
+        if (entry.isDirectory()) walk(full, relative)
+        else if (entry.isFile()) files.push(relative)
+      }
+    }
+    walk(root, '')
+    files.sort()
 
-  const hash = createHash('sha256')
-  for (const member of listing) {
-    const bytes = execFileSync('tar', ['-xzOf', tarball, member], { maxBuffer: 64 * 1024 * 1024 })
-    hash.update(member)
-    hash.update('\u0000')
-    hash.update(bytes)
-    hash.update('\u0000')
+    const hash = createHash('sha256')
+    for (const relative of files) {
+      hash.update(relative)
+      hash.update('\u0000')
+      hash.update(readFileSync(join(root, relative)))
+      hash.update('\u0000')
+    }
+    return { digest: hash.digest('hex').toUpperCase(), members: files.length }
+  } finally {
+    rmSync(scratch, { recursive: true, force: true })
   }
-  return { digest: hash.digest('hex').toUpperCase(), members: listing.length }
 }
 
 /** The one tarball this folder is about. */
