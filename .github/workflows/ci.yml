@@ -50,6 +50,16 @@ jobs:
           pnpm pack --pack-destination "$RUNNER_TEMP"
           node scripts/check-pack.mjs "$(ls "$RUNNER_TEMP"/dsh-side-chat-plugin-*.tgz | head -n 1)"
 
+      # The Git repository is this project's distribution channel (there is no
+      # npm account), so the tarball committed under dist/ must be a build of the
+      # current sources. This fails the moment they drift apart.
+      - name: The released artifact matches the sources
+        run: |
+          pnpm pack --pack-destination "$RUNNER_TEMP"
+          test "$(sha256sum "$RUNNER_TEMP"/dsh-side-chat-plugin-*.tgz | cut -d' ' -f1)" \
+             = "$(sha256sum dist/dsh-side-chat-plugin-*.tgz | cut -d' ' -f1)"
+          node scripts/release-current.mjs
+
       # The self-check must fail loudly on a machine without the plugin, so a
       # user never reads "all good" from an empty profile.
       - name: Self-check reports a missing installation

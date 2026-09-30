@@ -70,7 +70,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "verify": "node scripts/verify.mjs",
-    "prepack": "tsdown"
+    "release:check": "node scripts/release-current.mjs",
+    "release:write": "node scripts/release-current.mjs --write",
+    "prepack": "tsdown",
+    "prepare": "tsdown"
   },
   "keywords": [
     "deepseek-harness",
