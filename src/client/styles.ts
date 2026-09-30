@@ -366,11 +366,14 @@ export const PANEL_CSS = `
   white-space: nowrap;
 }
 .sc-header-button:hover { background: var(--dsw-alias-bg-layer-2, rgba(127, 127, 127, 0.14)); opacity: 1; }
-/* The glyph keeps its box; the label simply cannot wrap. */
+/* The glyph keeps its box. The label is the part a crowded row gives up: it may
+   be truncated but must never spill over the neighbouring controls, which is what
+   an unbounded label did. */
 .sc-header-button > svg { flex: 0 0 auto; }
-.sc-header-label { white-space: nowrap; }
+.sc-header-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .sc-message-action {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   border: none;
@@ -380,6 +383,9 @@ export const PANEL_CSS = `
   padding: 2px;
   border-radius: 6px;
   opacity: 0.75;
+  /* An icon-only control in a crowded action row: shrinking it below its own
+     glyph box makes it overlap the neighbouring buttons. */
+  min-width: max-content;
 }
 .sc-message-action:hover { opacity: 1; background: var(--dsw-alias-bg-layer-2, rgba(127, 127, 127, 0.14)); }
 .sc-md-table-wrap { margin: 0 0 10px; overflow-x: auto; }
