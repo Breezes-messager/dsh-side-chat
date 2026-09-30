@@ -52,13 +52,13 @@ jobs:
 
       # The Git repository is this project's distribution channel (there is no
       # npm account), so the tarball committed under dist/ must be a build of the
-      # current sources. This fails the moment they drift apart.
+      # current sources. This fails the moment they drift apart. It compares
+      # contents rather than raw bytes: gzip framing is not guaranteed identical
+      # across machines, but the files inside must be.
       - name: The released artifact matches the sources
         run: |
           pnpm pack --pack-destination "$RUNNER_TEMP"
-          test "$(sha256sum "$RUNNER_TEMP"/dsh-side-chat-plugin-*.tgz | cut -d' ' -f1)" \
-             = "$(sha256sum dist/dsh-side-chat-plugin-*.tgz | cut -d' ' -f1)"
-          node scripts/release-current.mjs
+          node scripts/release-current.mjs --compare "$(ls "$RUNNER_TEMP"/dsh-side-chat-plugin-*.tgz | head -n 1)"
 
       # The self-check must fail loudly on a machine without the plugin, so a
       # user never reads "all good" from an empty profile.

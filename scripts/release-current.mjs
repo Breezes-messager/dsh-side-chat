@@ -22,6 +22,36 @@ const DIST = join(ROOT, 'dist')
 const NOTE = join(DIST, 'README.md')
 const REPO_URL = 'https://github.com/Breezes-messager/dsh-side-chat'
 
+/**
+ * A digest of what is *inside* a tarball, independent of the archive's own
+ * framing.
+ *
+ * Byte-identity between two `pnpm pack` runs is a stronger claim than the gate
+ * needs, and a platform-dependent one: gzip headers carry an mtime and an OS
+ * byte, and only tar's member order is standardised. Comparing the member list
+ * and each member's contents asks the question that actually matters — "is the
+ * released file a build of these sources?" — without failing on framing.
+ * @param tarball - path to a `.tgz` file.
+ * @returns a hex digest over sorted member names and their bytes.
+ */
+export function contentDigest(tarball) {
+  const listing = execFileSync('tar', ['-tzf', tarball], { encoding: 'utf8' })
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .sort()
+
+  const hash = createHash('sha256')
+  for (const member of listing) {
+    const bytes = execFileSync('tar', ['-xzOf', tarball, member], { maxBuffer: 64 * 1024 * 1024 })
+    hash.update(member)
+    hash.update('\u0000')
+    hash.update(bytes)
+    hash.update('\u0000')
+  }
+  return { digest: hash.digest('hex').toUpperCase(), members: listing.length }
+}
+
 /** The one tarball this folder is about. */
 function releaseFile() {
   const names = readdirSync(DIST).filter((name) => name.endsWith('.tgz'))
@@ -125,9 +155,35 @@ Use this tarball, or install from a clone (see the README's source route, which
 builds before linking).
 `
 
+/**
+ * Compare the committed release against a freshly built one.
+ *
+ * This is what CI runs: it answers "is dist/ a build of these sources?" without
+ * depending on gzip framing matching byte for byte across machines. The SHA-256
+ * in the note is still the user's integrity check; this is the repository's
+ * drift check.
+ * @param fresh - path to a tarball packed from the working tree.
+ * @returns whether the two carry identical contents.
+ */
+function compare(fresh) {
+  const a = contentDigest(join(DIST, file))
+  const b = contentDigest(fresh)
+  if (a.digest === b.digest) {
+    console.log(`release-current: dist/${file} is a build of the current sources `
+      + `(${a.members} members, content ${a.digest.slice(0, 16)}…)`)
+    return true
+  }
+  console.error('release-current: the committed release does NOT match the current sources')
+  console.error(`  committed: ${a.members} members, content ${a.digest}`)
+  console.error(`  fresh    : ${b.members} members, content ${b.digest}`)
+  console.error('  fix with: pnpm pack --pack-destination dist && node scripts/release-current.mjs --write')
+  return false
+}
+
 const current = readFileSync(NOTE, 'utf8')
 const stale = current !== note
 const write = process.argv.includes('--write')
+const compareIndex = process.argv.indexOf('--compare')
 
 if (write) {
   if (stale) {
@@ -136,6 +192,19 @@ if (write) {
   } else {
     console.log('release-current: dist/README.md already describes this tarball')
   }
+} else if (compareIndex >= 0) {
+  const fresh = process.argv[compareIndex + 1]
+  if (fresh === undefined) {
+    console.error('release-current: --compare needs the path of a freshly packed tarball')
+    process.exit(2)
+  }
+  if (stale) {
+    console.error(`release-current: dist/README.md does not describe dist/${file}`)
+    console.error('  regenerate with: node scripts/release-current.mjs --write')
+    process.exit(1)
+  }
+  if (!compare(fresh)) process.exit(1)
+  console.log(`release-current: dist/README.md matches ${file} (${withCommas} bytes)`)
 } else if (stale) {
   console.error(`release-current: dist/README.md does not describe dist/${file}`)
   console.error(`  actual size: ${size}   actual sha256: ${sha}`)
