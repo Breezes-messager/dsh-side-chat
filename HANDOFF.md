@@ -14,11 +14,12 @@
 
 | 主题 | 结果 | 关键证据 |
 | --- | --- | --- |
-| 可安装性 / 分发（task-1、task-8） | npm 包做到「可直接 publish」：`files` 白名单、`prepack` 强制构建、`publishConfig`、CI 矩阵；新增零依赖自检 `scripts/verify.mjs` 与打包清单校验 `scripts/check-pack.mjs` | `pnpm pack` 15 文件 / 245,243 B，`check-pack.mjs` 19 项全 ok（本次实测） |
+| 可安装性 / 分发（task-1、task-8） | npm 包做到「可直接 publish」：`files` 白名单、`prepack` 强制构建、`publishConfig`、CI 矩阵；新增零依赖自检 `scripts/verify.mjs` 与打包清单校验 `scripts/check-pack.mjs`。**Git 是本项目唯一分发渠道（用户无 npm 账号）**，所以 `dist/` 里带一个预构建包，`scripts/release-current.mjs` 保证发布说明与包体一致、CI 会在两者漂移时失败 | `pnpm pack` 15 文件；体积与 SHA-256 见 `dist/README.md`（由脚本生成，故不在此处复述）；`check-pack.mjs` 19 项全 ok |
 | **改名解除名称占用**（task-8） | 包名与 Loader 行 id 都改为 `dsh-side-chat-plugin`，版本 `0.2.0`；仓库名与 GitHub URL 未变 | `package.json` `name/version`；`cordis.patch.yml` 两处；`lib/client.js` 注册 id 一致（本次实测） |
 | Host 加固（task-2、task-6） | 无会话/无模型时给可执行指引而非开发者措辞；SSE 生命周期、并发归还、畸形 body 全部有测试；Config 导出运行期 schemastery schema，`@deepseek-ai/schemastery` 内联进 `lib/index.js` | `typecheck` exit 0；`lib/index.js` 只有一条外部 import：`./protocol.js`（本次实测） |
 | 信任边界（task-6、task-7） | 默认 `trust: 'same-origin'`：带 `Origin` 查同源、`Origin: null` 拒绝、非 loopback 拒绝、**无 `Origin` 回退给 Host 的 `connection.requestRejection`**——这修掉了桌面端 403（Electron 转发会删掉 `Origin`、只补 cookie） | `decideTrust` 矩阵：desktop 形态 → `allowed / host-authenticated`；跨站 → 403 `origin-mismatch`（本次实测） |
-| 浏览器端可用性（task-3） | `src/client/**` 补测试（store/transport/contract/panel/locales/styles/notice/failure/preview）；错误可见、键盘可达、locale 中英键对齐 | `pnpm test` 19 文件 / 237 通过（本次实测） |
+| 浏览器端可用性（task-3） | `src/client/**` 补测试（store/transport/contract/panel/locales/styles/notice/failure/preview）；错误可见、键盘可达、locale 中英键对齐。**2026-09-30 10:50 用户报告头部按钮与相邻控件重叠 → 已修**（`.sc-header-button` / `.sc-message-action` 补 `flex: 0 0 auto` + `min-width: max-content`，标签可截断但绝不外溢；`.sc-header-label` 加 ellipsis）。**同批修掉同类隐患**：`.sc-message-action` 原先同样缺压缩保护。 | `pnpm test` 21 文件 / 239 通过；两个 headless Chrome 布局审计（见下）| 
+| 布局回归护栏（新增） | 布局类缺陷单测看不见，于是加了两个可复现夹具：`tests/client-header-fit.spec.tsx`（4 个宽度下量按钮矩形与相交）与 `tests/client-layout-audit.spec.tsx`（把面板/头部控件/消息动作/选区浮层/提示条放进各自真实容器，检测**越界、相交、文字被裁、控件塌成 0 尺寸**）。默认不写盘，给出环境变量才生成页面，由仓库外的 `measure-header-fit.mjs` / `measure-layout.mjs` 驱动 headless Chrome 测量。 | 当前：`9/9 surfaces clean`、`no overlap at any width`；实测「拥挤行」里可压缩的**邻居**从 178px 压到 43px，而本插件按钮稳定保持 84px | 
 | 用户文档（task-4、task-9） | README 两语种重写为「照做即可」；新增 CONTRIBUTING / 进阶安装；两次改名同步 + 「从旧名迁移」章节。**2026-09-30 08:45 又做了一轮「陌生人走查」修正**：补了"包还没发布到 npm"的醒目提示与 FAQ、把 `pnpm` 也会被执行策略拦一并写清、替换掉无效的 `pnpm why` 自查、手工卸载按安装方式分岔、插件版本与 DSH 版本消歧、`install.mjs` 后不要再点「立即启用」 | 两份 README 各 496 行 / 16 围栏 / 23 标题且**行号一一对应**；新增命令均由走查者实跑并贴出输出 |
 | 独立验收（task-5） | 由非实现者复算 pack 清单、离线导入、干净环境 install→test→build，并找出两个阻塞项（旧包名被占用、桌面 403）——两项均已修 | [tests/acceptance/independent-verification-2026-09-29.md](tests/acceptance/independent-verification-2026-09-29.md) |
 
@@ -26,7 +27,7 @@
 
 - **包名 / 行 id / 版本**：`dsh-side-chat-plugin` / `dsh-side-chat-plugin` / `0.2.0`。两者必须始终相等：浏览器半边只挂在「说明符恰好等于包名」的 Loader 行上。
 - **产物**：`pnpm build` 成功；`lib/index.js` 68,259 B（唯一外部 import `./protocol.js`）、`lib/client.js` 254,094 B（`window.__ModuleLoader__.load({ id: "dsh-side-chat-plugin", factory })`，`load()` 调用 1 次）。
-- **打包**：`dsh-side-chat-plugin-0.2.0.tgz`，247,685 B（SHA256 `F8AD6BF4…C439311`），恰好 15 个文件；`node scripts/check-pack.mjs <tgz>` → 19 项 ok，exit 0。体积随文档更新而变化，以你手上那次 `pnpm pack` 的输出为准。
+- **打包**：`dsh-side-chat-plugin-0.2.0.tgz`，恰好 15 个文件；`node scripts/check-pack.mjs <tgz>` → 19 项 ok，exit 0。**体积与 SHA-256 以 [dist/README.md](dist/README.md) 为准**——那份说明由 `node scripts/release-current.mjs --write` 从包体本身生成，这里再抄一遍只会在下次重新打包时变成过期数字。
 - **质量门**：`pnpm typecheck` exit 0；`pnpm test` **19 文件 / 237 用例全通过**（本轮开始前的基线是 58 个用例，据 task-5 验收记录）。
 - **默认信任策略及其真实边界**（`trust: 'same-origin'`）：
   - 带 `Origin` → 必须与本机所访问地址同源，否则 403；`Origin: null` → 403；非 loopback → 403。

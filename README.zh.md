@@ -73,11 +73,13 @@
    curl -L -o dsh-side-chat-plugin-0.2.0.tgz https://raw.githubusercontent.com/Breezes-messager/dsh-side-chat/main/dist/dsh-side-chat-plugin-0.2.0.tgz
    ```
 
-   想先确认下载完整，校验一下（应打印 `900C6A34496058E39702F8445B0AF8963F48A667F2C8E2519EEC57583A8D45F2`）：
+   想先确认下载完整，校验一下——把结果与 **[dist/README.md](dist/README.md) 里 `SHA-256` 那一行**对比，两者必须一致：
 
    ```sh
    node -e "const c=require('node:crypto'),f=require('node:fs');console.log(c.createHash('sha256').update(f.readFileSync(process.argv[1])).digest('hex').toUpperCase())" dsh-side-chat-plugin-0.2.0.tgz
    ```
+
+   > 这里刻意**不写死哈希值**：每次重新打包哈希都会变，写死就会过期，而过期的校验值会让用户误以为下载坏了。`dist/README.md` 由 `node scripts/release-current.mjs --write` 自动生成，永远对应当前那个包，CI 也会在两者不一致时失败。
 
 2. 打开 DeepSeek Harness。
 3. 在**左侧栏**找到「插件」（英文界面是 **Plugins**），点开。
